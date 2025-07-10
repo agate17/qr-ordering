@@ -1,0 +1,3 @@
+<br />
+<b>Warning</b>:  readfile(https://chart.googleapis.com/chart?chs=220x220&amp;cht=qr&amp;chl=http%3A%2F%2Flocalhost%2Fmenu.php%3Ftable%3D3): Failed to open stream: HTTP request failed! HTTP/1.1 404 Not Found
+ in <b>C:\xampp\htdocs\restaurant-demo\generate_qr.php</b> on line <b>24</b><br />
