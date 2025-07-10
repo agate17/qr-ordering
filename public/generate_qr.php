@@ -6,7 +6,7 @@ if ($table < 1 || $table > 3) {
     echo 'Invalid table number.';
     exit;
 }
-$url = "http://192.168.8.135/restaurant-demo/public/menu.php?table=$table";
+$url = "http://192.168.8.135/qr-ordering/qr-ordering/public/menu.php?table=$table";
 // Try to use endroid/qr-code if available
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once __DIR__ . '/../vendor/autoload.php';
