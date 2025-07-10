@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   order_id INT NOT NULL,
   menu_item_id INT NOT NULL,
   quantity INT NOT NULL,
+  customizations TEXT,
   FOREIGN KEY (order_id) REFERENCES orders(id),
   FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
 ); 

@@ -38,14 +38,15 @@ function get_menu_items() {
     return $MENU_ITEMS;
 }
 
-function create_order($table_id, $items) {
+function create_order($table_id, $items, $customizations = []) {
     $conn = db_connect();
     global $ORDERS, $ORDER_ITEMS;
     if ($conn) {
         $conn->query("INSERT INTO orders (table_id, status, created_at) VALUES ($table_id, 'pending', NOW())");
         $order_id = $conn->insert_id;
         foreach ($items as $item_id => $qty) {
-            $conn->query("INSERT INTO order_items (order_id, menu_item_id, quantity) VALUES ($order_id, $item_id, $qty)");
+            $customization_data = isset($customizations[$item_id]) ? $conn->real_escape_string($customizations[$item_id]) : '';
+            $conn->query("INSERT INTO order_items (order_id, menu_item_id, quantity, customizations) VALUES ($order_id, $item_id, $qty, '$customization_data')");
         }
         $conn->close();
         return $order_id;
@@ -62,7 +63,8 @@ function create_order($table_id, $items) {
                 'id' => count($ORDER_ITEMS) + 1,
                 'order_id' => $order_id,
                 'menu_item_id' => $item_id,
-                'quantity' => $qty
+                'quantity' => $qty,
+                'customizations' => isset($customizations[$item_id]) ? $customizations[$item_id] : ''
             ];
         }
         return $order_id;
@@ -120,4 +122,35 @@ function get_order_total($order_id) {
         $total += $menu[$item['menu_item_id']]['price'] * $item['quantity'];
     }
     return $total;
+}
+
+// New function to format customization data for display
+function format_customizations($customization_json) {
+    if (empty($customization_json)) return '';
+    
+    try {
+        $customizations = json_decode($customization_json, true);
+        if (!$customizations) return '';
+        
+        $formatted = [];
+        
+        // Format allergies
+        if (!empty($customizations['allergies'])) {
+            $formatted[] = '<strong>Allergies:</strong> ' . implode(', ', $customizations['allergies']);
+        }
+        
+        // Format removed ingredients
+        if (!empty($customizations['remove_ingredients'])) {
+            $formatted[] = '<strong>Remove:</strong> ' . implode(', ', $customizations['remove_ingredients']);
+        }
+        
+        // Format special requests
+        if (!empty($customizations['special_requests'])) {
+            $formatted[] = '<strong>Special:</strong> ' . htmlspecialchars($customizations['special_requests']);
+        }
+        
+        return implode('<br>', $formatted);
+    } catch (Exception $e) {
+        return '';
+    }
 } 
