@@ -5,7 +5,7 @@ if ($table_id < 1 || $table_id > 3) {
     die('Invalid or missing table number.');
 }
 $menu = get_menu_items();
-?>
+?> 
 <!DOCTYPE html>
 <html lang="en">
 <head>

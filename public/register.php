@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_paid'])) {
     header('Location: register.php');
     exit;
 }
-
+ 
 $orders = get_orders();
 $menu = get_menu_items();
 

@@ -6,7 +6,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_prepared'])) {
     $oid = intval($_POST['mark_prepared']);
     update_order_status($oid, 'prepared');
     header('Location: kitchen.php');
-    exit;
+    exit; 
 }
 
 $orders = get_orders('pending');
