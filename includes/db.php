@@ -9,11 +9,11 @@ $DB_NAME = 'restaurant_demo';
 
 // --- FALLBACK DATA ---
 $MENU_ITEMS = [
-    1 => ['id' => 1, 'name' => 'Margherita Pizza', 'price' => 8.00],
-    2 => ['id' => 2, 'name' => 'Spaghetti', 'price' => 9.00],
-    3 => ['id' => 3, 'name' => 'Caesar Salad', 'price' => 7.00],
-    4 => ['id' => 4, 'name' => 'Cola', 'price' => 2.00],
-    5 => ['id' => 5, 'name' => 'Water', 'price' => 1.50],
+    1 => ['id' => 1, 'name' => 'Margherita Pizza', 'description' => 'Classic pizza with tomato, mozzarella, and basil.', 'price' => 8.00, 'category_name' => 'Specials', 'image_path' => NULL, 'available' => 1],
+    2 => ['id' => 2, 'name' => 'Spaghetti', 'description' => 'Spaghetti pasta with homemade tomato sauce.', 'price' => 9.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
+    3 => ['id' => 3, 'name' => 'Caesar Salad', 'description' => 'Crisp romaine lettuce with Caesar dressing.', 'price' => 7.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
+    4 => ['id' => 4, 'name' => 'Cola', 'description' => 'Chilled soft drink.', 'price' => 2.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
+    5 => ['id' => 5, 'name' => 'Water', 'description' => 'Bottled mineral water.', 'price' => 1.50, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
 ];
 $ORDERS = [];
 $ORDER_ITEMS = [];
@@ -29,7 +29,12 @@ function get_menu_items() {
     $conn = db_connect();
     global $MENU_ITEMS;
     if ($conn) {
-        $res = $conn->query('SELECT * FROM menu_items');
+        $sql = "SELECT mi.*, c.name as category_name 
+                FROM menu_items mi 
+                LEFT JOIN categories c ON mi.category_id = c.id 
+                WHERE mi.available = 1 
+                ORDER BY c.name, mi.name";
+        $res = $conn->query($sql);
         $items = [];
         while ($row = $res->fetch_assoc()) $items[$row['id']] = $row;
         $conn->close();

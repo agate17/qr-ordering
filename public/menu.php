@@ -5,6 +5,18 @@ if ($table_id < 1 || $table_id > 3) {
     die('Invalid or missing table number.');
 }
 $menu = get_menu_items();
+
+// Group items by category
+$categories = [];
+$uncategorized = [];
+
+foreach ($menu as $item) {
+    if (!empty($item['category_name'])) {
+        $categories[$item['category_name']][] = $item;
+    } else {
+        $uncategorized[] = $item;
+    }
+}
 ?> 
 <!DOCTYPE html>
 <html lang="en">
@@ -12,7 +24,18 @@ $menu = get_menu_items();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Table <?php echo $table_id; ?> - Menu</title>
-    <link rel="stylesheet" type="text/css" href="assets/css/menu.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/menu.css?v=<?php echo time(); ?>">
+    <style>
+        /* Force remove any placeholder icons */
+        .food-image::before {
+            display: none !important;
+            content: none !important;
+        }
+        .food-image:before {
+            display: none !important;
+            content: none !important;
+        }
+    </style>
 </head>
 <body>
 <div class="container">
@@ -25,45 +48,97 @@ $menu = get_menu_items();
         <form method="post" action="submit_order.php" id="orderForm">
             <input type="hidden" name="table_id" value="<?php echo $table_id; ?>">
             
-            <div class="menu-grid">
-                <?php foreach ($menu as $item): ?>
-                <div class="menu-item">
-                    <div class="food-image">
-                        <!-- Placeholder for food image - will be replaced with actual images later -->
-                        <!-- <img src="assets/images/<?php echo $item['id']; ?>.jpg" alt="<?php echo htmlspecialchars($item['name']); ?>"> -->
-                    </div>
-                    <div class="food-details">
-                        <div class="food-name"><?php echo htmlspecialchars($item['name']); ?></div>
-                        <div class="food-description">
-                            <!-- Placeholder for food description - will be added to database later -->
-                            Delicious <?php echo htmlspecialchars($item['name']); ?> prepared with fresh ingredients
+            <!-- Display categorized items -->
+            <?php foreach ($categories as $category_name => $category_items): ?>
+            <div class="category-section">
+                <h2 class="category-title"><?php echo htmlspecialchars($category_name); ?></h2>
+                <div class="menu-grid">
+                    <?php foreach ($category_items as $item): ?>
+                    <div class="menu-item">
+                        <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
+                            <?php if (!empty($item['image_path'])): ?>
+                                <img src="<?php echo htmlspecialchars($item['image_path']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                            <?php endif; ?>
                         </div>
-                        <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
-                        
-                        <div class="item-controls">
-                            <div class="quantity-controls">
-                                <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
-                                <input type="number" 
-                                       class="quantity-input" 
-                                       name="qty[<?php echo $item['id']; ?>]" 
-                                       id="qty_<?php echo $item['id']; ?>"
-                                       min="0" 
-                                       max="10" 
-                                       value="0"
-                                       onchange="updateOrderSummary()">
-                                <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                        <div class="food-details">
+                            <div class="food-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                            <div class="food-description">
+                                <?php echo htmlspecialchars($item['description']); ?>
                             </div>
-                            <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
-                                Customize
-                            </button>
+                            <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
+                            
+                            <div class="item-controls">
+                                <div class="quantity-controls">
+                                    <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
+                                    <input type="number" 
+                                           class="quantity-input" 
+                                           name="qty[<?php echo $item['id']; ?>]" 
+                                           id="qty_<?php echo $item['id']; ?>"
+                                           min="0" 
+                                           max="10" 
+                                           value="0"
+                                           onchange="updateOrderSummary()">
+                                    <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                                </div>
+                                <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
+                                    Customize
+                                </button>
+                            </div>
+                            
+                            <!-- Hidden customization fields -->
+                            <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
                         </div>
-                        
-                        <!-- Hidden customization fields -->
-                        <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
                     </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
             </div>
+            <?php endforeach; ?>
+            
+            <!-- Display uncategorized items -->
+            <?php if (!empty($uncategorized)): ?>
+            <div class="category-section">
+                <h2 class="category-title">Other Items</h2>
+                <div class="menu-grid">
+                    <?php foreach ($uncategorized as $item): ?>
+                    <div class="menu-item">
+                        <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
+                            <?php if (!empty($item['image_path'])): ?>
+                                <img src="<?php echo htmlspecialchars($item['image_path']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                            <?php endif; ?>
+                        </div>
+                        <div class="food-details">
+                            <div class="food-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                            <div class="food-description">
+                                <?php echo htmlspecialchars($item['description']); ?>
+                            </div>
+                            <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
+                            
+                            <div class="item-controls">
+                                <div class="quantity-controls">
+                                    <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
+                                    <input type="number" 
+                                           class="quantity-input" 
+                                           name="qty[<?php echo $item['id']; ?>]" 
+                                           id="qty_<?php echo $item['id']; ?>"
+                                           min="0" 
+                                           max="10" 
+                                           value="0"
+                                           onchange="updateOrderSummary()">
+                                    <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                                </div>
+                                <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
+                                    Customize
+                                </button>
+                            </div>
+                            
+                            <!-- Hidden customization fields -->
+                            <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
             
             <div class="order-summary" id="orderSummary" style="display: none;">
                 <h3>Order Summary</h3>

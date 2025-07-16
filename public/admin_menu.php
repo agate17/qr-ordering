@@ -52,7 +52,15 @@ $conn = db_connect();
 $categories = [];
 if ($conn) {
     $cres = $conn->query('SELECT * FROM categories ORDER BY name');
-    while ($row = $cres->fetch_assoc()) $categories[] = $row;
+    if ($cres && $cres->num_rows > 0) {
+        while ($row = $cres->fetch_assoc()) {
+            $categories[] = $row;
+        }
+    }
+}
+// Ensure $categories is always an array
+if (!is_array($categories)) {
+    $categories = [];
 }
 
 // Feedback message logic
@@ -98,7 +106,15 @@ if ($conn) {
     // Re-fetch categories after changes
     $categories = [];
     $cres = $conn->query('SELECT * FROM categories ORDER BY name');
-    while ($row = $cres->fetch_assoc()) $categories[] = $row;
+    if ($cres && $cres->num_rows > 0) {
+        while ($row = $cres->fetch_assoc()) {
+            $categories[] = $row;
+        }
+    }
+    // Ensure $categories is always an array
+    if (!is_array($categories)) {
+        $categories = [];
+    }
 }
 
 // Handle add/edit/delete
@@ -158,15 +174,43 @@ if ($conn) {
     if (isset($_POST['delete_item'])) {
         $id = intval($_POST['id']);
         if ($id) {
-            $conn->query("DELETE FROM menu_items WHERE id=$id");
-            $feedback = 'Menu item deleted.';
-            $feedback_type = 'success';
+            try {
+                $conn->query("DELETE FROM menu_items WHERE id=$id");
+                $feedback = 'Menu item deleted.';
+                $feedback_type = 'success';
+            } catch (mysqli_sql_exception $e) {
+                if ($e->getCode() == 1451) {
+                    $feedback = 'Cannot delete this menu item because it has been ordered. Set it as unavailable instead.';
+                    $feedback_type = 'error';
+                } else {
+                    $feedback = 'Error deleting menu item: ' . $e->getMessage();
+                    $feedback_type = 'error';
+                }
+            }
         }
     }
     // Fetch menu
     $res = $conn->query('SELECT * FROM menu_items ORDER BY id');
     $menu = [];
-    while ($row = $res->fetch_assoc()) $menu[] = $row;
+    if ($res && $res->num_rows > 0) {
+        while ($row = $res->fetch_assoc()) {
+            // Ensure all required keys exist with proper defaults
+            $menu[] = array_merge([
+                'id' => 0,
+                'name' => '',
+                'description' => '',
+                'price' => 0,
+                'category_id' => null,
+                'image_path' => null,
+                'options' => '',
+                'available' => 1
+            ], $row);
+        }
+    }
+    // Ensure $menu is always an array
+    if (!is_array($menu)) {
+        $menu = [];
+    }
 } else {
     die('Database connection required for admin menu management.');
 }
@@ -614,52 +658,54 @@ if ($conn) $conn->close();
                 <th class="menu-items-table-price">Price (€)</th>
                 <th>Available</th>
             </tr>
+            <?php if (!empty($menu) && is_array($menu)): ?>
             <?php foreach ($menu as $idx => $item): ?>
+            <form class="inline" method="post" enctype="multipart/form-data">
             <tr class="menu-item-block <?php echo $idx % 2 === 0 ? 'even' : 'odd'; ?>">
-                <form class="inline" method="post" enctype="multipart/form-data">
-                    <td><?php echo $item['id']; ?><input type="hidden" name="id" value="<?php echo $item['id']; ?>"></td>
-                    <td><input type="text" name="name" value="<?php echo htmlspecialchars($item['name']); ?>" required></td>
-                    <td><textarea name="description" placeholder="Description" style="width:120px;vertical-align:top;"><?php echo htmlspecialchars($item['description'] ?? ''); ?></textarea></td>
-                    <td>
-                        <select name="category_id">
-                            <option value="">Select Category</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>" <?php if (isset($item) && isset($item['category_id']) && $item['category_id'] == $cat['id']) echo 'selected'; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </td>
-                    <td class="menu-items-table-price"><input type="number" name="price" value="<?php echo number_format($item['price'],2,'.',''); ?>" step="0.01" min="0.01" required></td>
-                    <td><input type="checkbox" name="available" <?php if (!isset($item['available']) || $item['available']) echo 'checked'; ?>></td>
-                    <td colspan="3"></td>
-                </form>
+                <td><?php echo isset($item['id']) ? $item['id'] : ''; ?><input type="hidden" name="id" value="<?php echo isset($item['id']) ? $item['id'] : ''; ?>"></td>
+                <td><input type="text" name="name" value="<?php echo htmlspecialchars(isset($item['name']) ? $item['name'] : ''); ?>" required></td>
+                <td><textarea name="description" placeholder="Description" style="width:120px;vertical-align:top;"><?php echo htmlspecialchars($item['description'] ?? ''); ?></textarea></td>
+                <td>
+                    <select name="category_id">
+                        <option value="">Select Category</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?php echo $cat['id']; ?>" <?php if (isset($item) && isset($item['category_id']) && $item['category_id'] == $cat['id']) echo 'selected'; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+                <td class="menu-items-table-price"><input type="number" name="price" value="<?php echo number_format(isset($item['price']) ? $item['price'] : 0,2,'.',''); ?>" step="0.01" min="0.01" required></td>
+                <td><input type="checkbox" name="available" <?php if (!isset($item['available']) || $item['available']) echo 'checked'; ?>></td>
+                <td colspan="3"></td>
             </tr>
             <tr class="menu-item-block <?php echo $idx % 2 === 0 ? 'even' : 'odd'; ?> end-of-block">
-                <form class="inline" method="post" enctype="multipart/form-data">
-                    <td colspan="9">
-                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:18px; justify-content:center;">
-                            <div>
-                                <input type="file" id="tableImageInput<?php echo $item['id']; ?>" name="image" accept="image/*" style="display:none;" onchange="showTableFileName(this, <?php echo $item['id']; ?>)">
-                                <label for="tableImageInput<?php echo $item['id']; ?>" class="custom-file-label-table">
-                                    <svg viewBox="0 0 20 20"><path d="M16.88 9.94a1 1 0 0 0-1.41 0l-3.17 3.17V3a1 1 0 1 0-2 0v10.11l-3.17-3.17a1 1 0 0 0-1.41 1.41l5 5a1 1 0 0 0 1.41 0l5-5a1 1 0 0 0 0-1.41z"/></svg>
-                                    Choose File
-                                </label>
-                                <span class="file-name" id="tableFileName<?php echo $item['id']; ?>"></span>
-                                <?php if (!empty($item['image_path'])): ?>
-                                    <img src="<?php echo htmlspecialchars($item['image_path']); ?>" class="menu-thumb" alt="Image">
-                                <?php endif; ?>
-                            </div>
-                            <div>
-                                <input type="text" name="options" value="<?php echo htmlspecialchars($item['options'] ?? ''); ?>" placeholder="Options" style="width:160px;">
-                            </div>
-                            <div class="actions">
-                                <button type="submit" name="edit_item">Save</button>
-                                <button type="submit" name="delete_item" onclick="return confirm('Delete this item?');">Delete</button>
-                            </div>
+                <td colspan="9">
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:18px; justify-content:center;">
+                        <div>
+                            <input type="file" id="tableImageInput<?php echo isset($item['id']) ? $item['id'] : ''; ?>" name="image" accept="image/*" style="display:none;" onchange="showTableFileName(this, <?php echo isset($item['id']) ? $item['id'] : ''; ?>)">
+                            <label for="tableImageInput<?php echo isset($item['id']) ? $item['id'] : ''; ?>" class="custom-file-label-table">
+                                <svg viewBox="0 0 20 20"><path d="M16.88 9.94a1 1 0 0 0-1.41 0l-3.17 3.17V3a1 1 0 1 0-2 0v10.11l-3.17-3.17a1 1 0 0 0-1.41 1.41l5 5a1 1 0 0 0 1.41 0l5-5a1 1 0 0 0 0-1.41z"/></svg>
+                                Choose File
+                            </label>
+                            <span class="file-name" id="tableFileName<?php echo isset($item['id']) ? $item['id'] : ''; ?>"></span>
+                            <?php if (!empty($item['image_path'])): ?>
+                                <img src="<?php echo htmlspecialchars($item['image_path']); ?>" class="menu-thumb" alt="Image">
+                            <?php endif; ?>
                         </div>
-                    </td>
-                </form>
+                        <div>
+                            <input type="text" name="options" value="<?php echo htmlspecialchars($item['options'] ?? ''); ?>" placeholder="Options" style="width:160px;">
+                        </div>
+                        <div class="actions">
+                            <button type="submit" name="edit_item">Save</button>
+                            <button type="submit" name="delete_item" onclick="return confirm('Delete this item?');">Delete</button>
+                        </div>
+                    </div>
+                </td>
             </tr>
+            </form>
             <?php endforeach; ?>
+            <?php else: ?>
+            <tr><td colspan="6" style="text-align: center; padding: 20px;">No menu items found. Add some items to get started.</td></tr>
+            <?php endif; ?>
         </table>
     </div>
 </div>
