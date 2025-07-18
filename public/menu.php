@@ -25,6 +25,8 @@ foreach ($menu as $item) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Table <?php echo $table_id; ?> - Menu</title>
     <link rel="stylesheet" type="text/css" href="assets/css/menu.css?v=<?php echo time(); ?>">
+    <!-- Bootstrap Icons CDN for filter icon -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
         /* Force remove any placeholder icons */
         .food-image::before {
@@ -45,12 +47,28 @@ foreach ($menu as $item) {
     </div>
     
     <div class="menu-content">
+        <!-- Category Filter Dropdown -->
+        <div style="margin-bottom: 24px; text-align: right;">
+            <label for="categoryFilter" style="font-weight: 600; margin-right: 8px;">
+                <i class="bi bi-filter" style="font-size:1.2em; vertical-align:middle; margin-right:4px;"></i>
+                Filter by Category:
+            </label>
+            <select id="categoryFilter" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="all">All</option>
+                <?php foreach (array_keys($categories) as $category_name): ?>
+                    <option value="<?php echo htmlspecialchars($category_name); ?>"><?php echo htmlspecialchars($category_name); ?></option>
+                <?php endforeach; ?>
+                <?php if (!empty($uncategorized)): ?>
+                    <option value="Other Items">Other Items</option>
+                <?php endif; ?>
+            </select>
+        </div>
         <form method="post" action="submit_order.php" id="orderForm">
             <input type="hidden" name="table_id" value="<?php echo $table_id; ?>">
             
             <!-- Display categorized items -->
             <?php foreach ($categories as $category_name => $category_items): ?>
-            <div class="category-section">
+            <div class="category-section" data-category="<?php echo htmlspecialchars($category_name); ?>">
                 <h2 class="category-title"><?php echo htmlspecialchars($category_name); ?></h2>
                 <div class="menu-grid">
                     <?php foreach ($category_items as $item): ?>
@@ -96,7 +114,7 @@ foreach ($menu as $item) {
             
             <!-- Display uncategorized items -->
             <?php if (!empty($uncategorized)): ?>
-            <div class="category-section">
+            <div class="category-section" data-category="Other Items">
                 <h2 class="category-title">Other Items</h2>
                 <div class="menu-grid">
                     <?php foreach ($uncategorized as $item): ?>
@@ -410,6 +428,19 @@ document.addEventListener('keydown', function(e) {
 // Initialize order summary on page load
 document.addEventListener('DOMContentLoaded', function() {
     updateOrderSummary();
+});
+
+// Category filter logic
+const categoryFilter = document.getElementById('categoryFilter');
+categoryFilter.addEventListener('change', function() {
+    const selected = this.value;
+    document.querySelectorAll('.category-section').forEach(section => {
+        if (selected === 'all' || section.getAttribute('data-category') === selected) {
+            section.style.display = '';
+        } else {
+            section.style.display = 'none';
+        }
+    });
 });
 </script>
 </body>
