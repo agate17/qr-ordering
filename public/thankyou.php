@@ -273,7 +273,7 @@ $order_id = isset($_GET['order']) ? intval($_GET['order']) : 0;
         </div>
         
         <div class="status-indicator">
-            <div class="status-text">🕐 Your order is being prepared</div>
+            <div class="status-text" id="orderStatusText">🕐 Your order is being prepared</div>
         </div>
         
         <div class="action-buttons">
@@ -286,5 +286,35 @@ $order_id = isset($_GET['order']) ? intval($_GET['order']) : 0;
         </div>
     </div>
 </div>
+<script>
+// Live order status polling
+const orderId = <?php echo json_encode($order_id); ?>;
+function updateOrderStatus() {
+    if (!orderId) return;
+    fetch('get_order_status.php?order=' + orderId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                let statusText = '';
+                switch (data.status) {
+                    case 'pending':
+                        statusText = '🕐 Your order is pending';
+                        break;
+                    case 'prepared':
+                        statusText = '✅ Your order is ready!';
+                        break;
+                    case 'paid':
+                        statusText = '💸 Your order has been paid. Thank you!';
+                        break;
+                    default:
+                        statusText = 'Status: ' + data.status;
+                }
+                document.getElementById('orderStatusText').textContent = statusText;
+            }
+        });
+}
+setInterval(updateOrderStatus, 5000);
+updateOrderStatus();
+</script>
 </body>
 </html>

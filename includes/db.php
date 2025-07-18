@@ -111,10 +111,20 @@ function get_order_items($order_id) {
 function update_order_status($order_id, $status) {
     $conn = db_connect();
     global $ORDERS;
+    $debug_log = __DIR__ . '/../debug.log';
+    $query = "UPDATE orders SET status='" . $conn->real_escape_string($status) . "' WHERE id=$order_id";
+    file_put_contents($debug_log, date('Y-m-d H:i:s') . " update_order_status called with order_id=$order_id, status=$status\n", FILE_APPEND);
+    file_put_contents($debug_log, date('Y-m-d H:i:s') . " Query: $query\n", FILE_APPEND);
     if ($conn) {
-        $conn->query("UPDATE orders SET status='" . $conn->real_escape_string($status) . "' WHERE id=$order_id");
+        $result = $conn->query($query);
+        if (!$result) {
+            file_put_contents($debug_log, date('Y-m-d H:i:s') . " MySQL error updating order status: " . $conn->error . "\n", FILE_APPEND);
+        } else if ($conn->affected_rows === 0) {
+            file_put_contents($debug_log, date('Y-m-d H:i:s') . " Order status update failed for order_id=$order_id, status=$status\n", FILE_APPEND);
+        }
         $conn->close();
     } else {
+        file_put_contents($debug_log, date('Y-m-d H:i:s') . " DB connection failed in update_order_status\n", FILE_APPEND);
         if (isset($ORDERS[$order_id])) $ORDERS[$order_id]['status'] = $status;
     }
 }

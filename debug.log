@@ -1,0 +1,4 @@
+2025-07-18 23:45:12 update_order_status called with order_id=5, status=prepared
+2025-07-18 23:45:12 Query: UPDATE orders SET status='prepared' WHERE id=5
+2025-07-18 23:50:47 update_order_status called with order_id=6, status=prepared
+2025-07-18 23:50:47 Query: UPDATE orders SET status='prepared' WHERE id=6
