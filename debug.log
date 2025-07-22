@@ -1,0 +1,28 @@
+2025-07-22 22:49:15 update_order_status called with order_id=2, status=paid
+2025-07-22 22:49:15 Query: UPDATE orders SET status='paid' WHERE id=2
+2025-07-22 22:49:17 update_order_status called with order_id=16, status=paid
+2025-07-22 22:49:17 Query: UPDATE orders SET status='paid' WHERE id=16
+2025-07-22 22:49:17 update_order_status called with order_id=15, status=paid
+2025-07-22 22:49:17 Query: UPDATE orders SET status='paid' WHERE id=15
+2025-07-22 22:49:18 update_order_status called with order_id=14, status=paid
+2025-07-22 22:49:18 Query: UPDATE orders SET status='paid' WHERE id=14
+2025-07-22 22:49:19 update_order_status called with order_id=13, status=paid
+2025-07-22 22:49:19 Query: UPDATE orders SET status='paid' WHERE id=13
+2025-07-22 22:49:20 update_order_status called with order_id=12, status=paid
+2025-07-22 22:49:20 Query: UPDATE orders SET status='paid' WHERE id=12
+2025-07-22 22:49:21 update_order_status called with order_id=11, status=paid
+2025-07-22 22:49:21 Query: UPDATE orders SET status='paid' WHERE id=11
+2025-07-22 22:49:22 update_order_status called with order_id=9, status=paid
+2025-07-22 22:49:22 Query: UPDATE orders SET status='paid' WHERE id=9
+2025-07-22 22:49:22 update_order_status called with order_id=8, status=paid
+2025-07-22 22:49:22 Query: UPDATE orders SET status='paid' WHERE id=8
+2025-07-22 22:49:23 update_order_status called with order_id=7, status=paid
+2025-07-22 22:49:23 Query: UPDATE orders SET status='paid' WHERE id=7
+2025-07-22 22:49:25 update_order_status called with order_id=6, status=paid
+2025-07-22 22:49:25 Query: UPDATE orders SET status='paid' WHERE id=6
+2025-07-22 22:49:26 update_order_status called with order_id=5, status=paid
+2025-07-22 22:49:26 Query: UPDATE orders SET status='paid' WHERE id=5
+2025-07-22 22:49:27 update_order_status called with order_id=4, status=paid
+2025-07-22 22:49:27 Query: UPDATE orders SET status='paid' WHERE id=4
+2025-07-22 22:49:27 update_order_status called with order_id=3, status=paid
+2025-07-22 22:49:27 Query: UPDATE orders SET status='paid' WHERE id=3

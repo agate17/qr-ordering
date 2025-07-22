@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_paid'])) {
 }
  
 $orders = get_orders();
+$orders = array_filter($orders, function($order) {
+    return $order['status'] !== 'paid';
+});
 $menu = get_menu_items();
 
 // Group orders by table
