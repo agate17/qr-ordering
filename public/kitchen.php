@@ -37,15 +37,15 @@ $kitchen_orders = array_filter($orders, function($o) {
 <body>
 <div class="container">
     <div class="header">
-        <h1>🍳 Kitchen Orders</h1>
-        <div class="subtitle">Incoming orders from customers</div>
+        <h1>🍳 Pasūtījumi</h1>
+        <div class="subtitle">Ienākošie pasūtījumi no klientiem</div>
     </div>
     
     <?php if (empty($kitchen_orders)): ?>
         <div class="empty">
             <div class="empty-icon">🍽️</div>
-            <div>No pending orders at the moment.</div>
-            <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">Orders will appear here automatically.</div>
+            <div>Pašlaik nav pasūtījumu.</div>
+            <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">Pasūtījumi šeit parādīsies automātiski.</div>
         </div>
     <?php else: ?>
         <?php foreach ($kitchen_orders as $order): ?>
@@ -55,7 +55,7 @@ $kitchen_orders = array_filter($orders, function($o) {
                 else echo '#fff'; ?>;">
                 <div class="order-header">
                     <div class="order-info">
-                        <div class="table-number">Table <?php echo $order['table_id']; ?></div>
+                        <div class="table-number">Galds <?php echo $order['table_id']; ?></div>
                         <div class="order-time"><?php echo date('H:i', strtotime($order['created_at'])); ?></div>
                         <span class="status-badge status-<?php echo $order['status']; ?>" style="margin-left:10px; padding: 6px 12px; border-radius: 15px; font-weight: 600; font-size: 0.95em; text-transform: uppercase; letter-spacing: 1px; background: <?php
                              if ($order['status'] === 'pending') echo '#fff3cd; color: #856404; border: 1px solid #ffeaa7;';
@@ -68,12 +68,12 @@ $kitchen_orders = array_filter($orders, function($o) {
                     <form method="post" action="kitchen.php" style="margin:0;">
                         <?php if ($order['status'] === 'pending'): ?>
                             <input type="hidden" name="mark_preparing" value="<?php echo $order['id']; ?>">
-                            <button class="btn" type="submit">🍳 Mark as Preparing</button>
+                            <button class="btn" type="submit">🍳 Atzīmēt kā gatavojas</button>
                         <?php elseif ($order['status'] === 'preparing'): ?>
                             <input type="hidden" name="mark_prepared" value="<?php echo $order['id']; ?>">
-                            <button class="btn" type="submit">✅ Mark as Prepared</button>
+                            <button class="btn" type="submit">✅ Atzīmēt kā sagatavotu</button>
                         <?php else: ?>
-                            <button class="btn" type="button" disabled>✔ Ready</button>
+                            <button class="btn" type="button" disabled>✔ Gatavs</button>
                         <?php endif; ?>
                     </form>
                 </div>

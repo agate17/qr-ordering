@@ -42,8 +42,8 @@ foreach ($menu as $item) {
 <body>
 <div class="container">
     <div class="header">
-        <h1>Table <?php echo $table_id; ?></h1>
-        <div class="subtitle">Select your delicious meals</div>
+        <h1>Galds <?php echo $table_id; ?></h1>
+        <div class="subtitle">Izvēlies kādu no gardajiem ēdieniem!</div>
     </div>
     
     <div class="menu-content">
@@ -51,15 +51,15 @@ foreach ($menu as $item) {
         <div style="margin-bottom: 24px; text-align: right;">
             <label for="categoryFilter" style="font-weight: 600; margin-right: 8px;">
                 <i class="bi bi-filter" style="font-size:1.2em; vertical-align:middle; margin-right:4px;"></i>
-                Filter by Category:
+                izvēlēties kategoriju:
             </label>
             <select id="categoryFilter" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc;">
-                <option value="all">All</option>
+                <option value="all">Viss</option>
                 <?php foreach (array_keys($categories) as $category_name): ?>
                     <option value="<?php echo htmlspecialchars($category_name); ?>"><?php echo htmlspecialchars($category_name); ?></option>
                 <?php endforeach; ?>
                 <?php if (!empty($uncategorized)): ?>
-                    <option value="Other Items">Other Items</option>
+                    <option value="Other Items">Citi ēdieni</option>
                 <?php endif; ?>
             </select>
         </div>
@@ -99,7 +99,7 @@ foreach ($menu as $item) {
                                     <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
                                 </div>
                                 <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
-                                    Customize
+                                    Pielāgot
                                 </button>
                             </div>
                             
@@ -115,7 +115,7 @@ foreach ($menu as $item) {
             <!-- Display uncategorized items -->
             <?php if (!empty($uncategorized)): ?>
             <div class="category-section" data-category="Other Items">
-                <h2 class="category-title">Other Items</h2>
+                <h2 class="category-title">Citi ēdieni</h2>
                 <div class="menu-grid">
                     <?php foreach ($uncategorized as $item): ?>
                     <div class="menu-item">
@@ -145,7 +145,7 @@ foreach ($menu as $item) {
                                     <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
                                 </div>
                                 <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
-                                    Customize
+                                    Pielāgot
                                 </button>
                             </div>
                             
@@ -159,13 +159,13 @@ foreach ($menu as $item) {
             <?php endif; ?>
             
             <div class="order-summary" id="orderSummary" style="display: none;">
-                <h3>Order Summary</h3>
+                <h3>Pasūtījuma kopsavilkums:</h3>
                 <div id="summaryItems"></div>
                 <div class="summary-total" id="summaryTotal"></div>
             </div>
             
             <button class="submit-btn" type="submit" id="submitBtn" disabled>
-                Place Order
+                Pasūtīt!
             </button>
         </form>
     </div>
@@ -175,82 +175,50 @@ foreach ($menu as $item) {
 <div class="modal-overlay" id="customizeModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 class="modal-title" id="modalTitle">Customize Your Order</h3>
+            <h3 class="modal-title" id="modalTitle">Pielāgo savu ēdienu:</h3>
             <button class="close-btn" onclick="closeCustomize()">&times;</button>
         </div>
         
         <div class="customization-section">
-            <div class="section-title">Allergy Information</div>
+            <div class="section-title">Informācija par alerģijām:</div>
             <div class="allergy-options">
                 <div class="allergy-option">
                     <input type="checkbox" id="allergy_gluten" name="allergies[]" value="gluten">
-                    <label for="allergy_gluten">Gluten Free</label>
+                    <label for="allergy_gluten">Bez glutēna/Gluten free</label>
                 </div>
                 <div class="allergy-option">
                     <input type="checkbox" id="allergy_dairy" name="allergies[]" value="dairy">
-                    <label for="allergy_dairy">Dairy Free</label>
+                    <label for="allergy_dairy">Bez piena produktiem/Dairy Free</label>
                 </div>
                 <div class="allergy-option">
                     <input type="checkbox" id="allergy_nuts" name="allergies[]" value="nuts">
-                    <label for="allergy_nuts">No Nuts</label>
+                    <label for="allergy_nuts">Bez riekstiem/No nuts</label>
                 </div>
                 <div class="allergy-option">
                     <input type="checkbox" id="allergy_eggs" name="allergies[]" value="eggs">
-                    <label for="allergy_eggs">No Eggs</label>
+                    <label for="allergy_eggs">Bez olām/No Eggs</label>
                 </div>
                 <div class="allergy-option">
                     <input type="checkbox" id="allergy_seafood" name="allergies[]" value="seafood">
-                    <label for="allergy_seafood">No Seafood</label>
+                    <label for="allergy_seafood">Bez jūras veltēm/No Seafood</label>
                 </div>
                 <div class="allergy-option">
                     <input type="checkbox" id="allergy_soy" name="allergies[]" value="soy">
-                    <label for="allergy_soy">No Soy</label>
+                    <label for="allergy_soy">Bez sojas/No Soy</label>
                 </div>
             </div>
         </div>
-        
+
         <div class="customization-section">
-            <div class="section-title">Remove Ingredients</div>
-            <div class="ingredient-removal">
-                <div class="ingredient-list">
-                    <div class="ingredient-item">
-                        <input type="checkbox" id="remove_onions" name="remove_ingredients[]" value="onions">
-                        <label for="remove_onions">Onions</label>
-                    </div>
-                    <div class="ingredient-item">
-                        <input type="checkbox" id="remove_garlic" name="remove_ingredients[]" value="garlic">
-                        <label for="remove_garlic">Garlic</label>
-                    </div>
-                    <div class="ingredient-item">
-                        <input type="checkbox" id="remove_cheese" name="remove_ingredients[]" value="cheese">
-                        <label for="remove_cheese">Cheese</label>
-                    </div>
-                    <div class="ingredient-item">
-                        <input type="checkbox" id="remove_mushrooms" name="remove_ingredients[]" value="mushrooms">
-                        <label for="remove_mushrooms">Mushrooms</label>
-                    </div>
-                    <div class="ingredient-item">
-                        <input type="checkbox" id="remove_tomatoes" name="remove_ingredients[]" value="tomatoes">
-                        <label for="remove_tomatoes">Tomatoes</label>
-                    </div>
-                    <div class="ingredient-item">
-                        <input type="checkbox" id="remove_peppers" name="remove_ingredients[]" value="peppers">
-                        <label for="remove_peppers">Peppers</label>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="customization-section">
-            <div class="section-title">Special Requests</div>
+            <div class="section-title">Īpašas prasības:</div>
             <div class="special-requests">
-                <textarea id="specialRequests" name="special_requests" placeholder="Any special instructions, preferences, or additional requests..."></textarea>
+                <textarea id="specialRequests" name="special_requests" placeholder="īpaši norādījumi, sastāvdaļu izņemšana vai papildu pieprasījumi..."></textarea>
             </div>
         </div>
         
         <div class="modal-actions">
-            <button type="button" class="modal-btn cancel-btn" onclick="closeCustomize()">Cancel</button>
-            <button type="button" class="modal-btn save-btn" onclick="saveCustomizations()">Save Customizations</button>
+            <button type="button" class="modal-btn cancel-btn" onclick="closeCustomize()">Atcelt</button>
+            <button type="button" class="modal-btn save-btn" onclick="saveCustomizations()">Saglabāt pielāgojumus</button>
         </div>
     </div>
 </div>

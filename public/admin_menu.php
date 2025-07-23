@@ -23,7 +23,7 @@ if (empty($_SESSION['admin_logged_in'])) {
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Admin Login</title>
+        <title>Admin pieslēgšanās</title>
         <style>
             body { font-family: sans-serif; background: #f8f8f8; }
             .container { max-width: 350px; margin: 80px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
@@ -33,11 +33,11 @@ if (empty($_SESSION['admin_logged_in'])) {
     </head>
     <body>
     <div class="container">
-        <h1>Admin Login</h1>
+        <h1>Admin pieslēgšanās</h1>
         <?php if (!empty($error)) echo '<div class="error">'.$error.'</div>'; ?>
         <form method="post">
-            <input type="password" name="password" placeholder="Password" required style="width:100%;padding:10px;margin-bottom:16px;">
-            <button type="submit" name="admin_login" style="width:100%;padding:10px;">Login</button>
+            <input type="password" name="password" placeholder="parole" required style="width:100%;padding:10px;margin-bottom:16px;">
+            <button type="submit" name="admin_login" style="width:100%;padding:10px;">pieslēgties</button>
         </form>
     </div>
     </body>
@@ -253,21 +253,21 @@ if ($conn) $conn->close();
         <div class="feedback<?php if ($feedback_type === 'error') echo ' error'; ?>"><?php echo htmlspecialchars($feedback); ?></div>
     <?php endif; ?>
     <div class="section">
-        <h1>Daily/Weekly Report</h1>
+        <h1>pārskati</h1>
         <form method="post" style="margin-bottom:16px;">
             <div class="form-row">
-                <label>Start Date: <input type="date" name="report_start" value="<?php echo htmlspecialchars($report_start); ?>"></label>
-                <label>End Date: <input type="date" name="report_end" value="<?php echo htmlspecialchars($report_end); ?>"></label>
-                <button type="submit" name="show_report">Show Report</button>
+                <label>Sākuma datums: <input type="date" name="report_start" value="<?php echo htmlspecialchars($report_start); ?>"></label>
+                <label>Beigu datums: <input type="date" name="report_end" value="<?php echo htmlspecialchars($report_end); ?>"></label>
+                <button type="submit" name="show_report">Rādīt atskaiti</button>
             </div>
         </form>
         <?php if (isset($_POST['show_report'])): ?>
             <div class="summary">
-                <strong>Total Orders:</strong> <?php echo count($report_orders); ?> &nbsp; | &nbsp;
-                <strong>Total Revenue:</strong> €<?php echo number_format($report_total, 2); ?>
+                <strong>Pasūtījumu kopskaits:</strong> <?php echo count($report_orders); ?> &nbsp; | &nbsp;
+                <strong>Kopējie ieņēmumi:</strong> €<?php echo number_format($report_total, 2); ?>
             </div>
             <table style="margin-bottom:0;">
-                <tr><th>Date/Time</th><th>Table</th><th>Status</th><th>Total (€)</th></tr>
+                <tr><th>Datums/Laiks</th><th>galds</th><th>statuss</th><th>Kopā (€)</th></tr>
                 <?php foreach ($report_orders as $order): ?>
                 <tr>
                     <td><?php echo htmlspecialchars($order['created_at']); ?></td>
@@ -280,21 +280,21 @@ if ($conn) $conn->close();
         <?php endif; ?>
     </div>
     <div class="section">
-        <h1>Manage Categories</h1>
+        <h1>Pārvaldīt kategorijas</h1>
         <form method="post" class="form-row">
-            <label>New Category: <input type="text" name="cat_name" placeholder="Category name" required></label>
-            <button type="submit" name="add_category">Add Category</button>
+            <label>Jauna kategorija: <input type="text" name="cat_name" placeholder="kategorijas nosaukums" required></label>
+            <button type="submit" name="add_category">Pievienot kategoriju</button>
         </form>
         <table style="margin-bottom:0;">
-            <tr><th>ID</th><th>Name</th><th>Actions</th></tr>
+            <tr><th>ID</th><th>Nosaukums</th><th>Darbības</th></tr>
             <?php foreach ($categories as $cat): ?>
             <tr>
                 <form method="post" class="inline">
                     <td><?php echo $cat['id']; ?><input type="hidden" name="cat_id" value="<?php echo $cat['id']; ?>"></td>
                     <td><input type="text" name="cat_name" value="<?php echo htmlspecialchars($cat['name']); ?>" required></td>
                     <td>
-                        <button type="submit" name="edit_category">Save</button>
-                        <button type="submit" name="delete_category" onclick="return confirm('Delete this category?');">Delete</button>
+                        <button type="submit" name="edit_category">Saglabāt</button>
+                        <button type="submit" name="delete_category" onclick="return confirm('Delete this category?');">Dzēst</button>
                     </td>
                 </form>
             </tr>
@@ -302,44 +302,44 @@ if ($conn) $conn->close();
         </table>
     </div>
     <div class="section">
-        <h1>Manage Menu Items</h1>
-        <button class="add-item-btn" onclick="openAddModal()">Add Menu Item</button>
+        <h1> Pārvaldīt ēdienkarti</h1>
+        <button class="add-item-btn" onclick="openAddModal()">pievienot ēdienu</button>
         <div class="modal-overlay" id="addModalOverlay" onclick="if(event.target===this)closeAddModal()">
             <div class="add-modal">
                 <button class="close-btn" onclick="closeAddModal()">&times;</button>
-                <h2>Add Menu Item</h2>
+                <h2>pievienot ēdienu</h2>
                 <form class="add-form" method="post" enctype="multipart/form-data" autocomplete="off">
-                    <label>Name:
-                        <input type="text" name="name" placeholder="Item name" required>
+                    <label>nosaukums:
+                        <input type="text" name="name" placeholder="ēdiena nosaukums" required>
                     </label>
-                    <label>Description:
+                    <label>apraksts (sastavdaļas):
                         <textarea name="description" placeholder="Description"></textarea>
                     </label>
-                    <label>Price:
-                        <input type="number" name="price" placeholder="Price" step="0.01" min="0.01" required>
+                    <label>Cena:
+                        <input type="number" name="price" placeholder="cena" step="0.01" min="0.01" required>
                     </label>
-                    <label>Category:
+                    <label>kategorija:
                         <select name="category_id">
-                            <option value="">Select Category</option>
+                            <option value="">izvēlies kategoriju</option>
                             <?php foreach ($categories as $cat): ?>
                                 <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </label>
-                    <label>Image:</label>
+                    <label>attēls:</label>
                     <input type="file" id="modalImageInput" name="image" accept="image/*" style="display:none;" onchange="showFileName(this)">
                     <label for="modalImageInput" class="custom-file-label">
                         <svg viewBox="0 0 20 20"><path d="M16.88 9.94a1 1 0 0 0-1.41 0l-3.17 3.17V3a1 1 0 1 0-2 0v10.11l-3.17-3.17a1 1 0 0 0-1.41 1.41l5 5a1 1 0 0 0 1.41 0l5-5a1 1 0 0 0 0-1.41z"/></svg>
-                        Choose File
+                        izvēlies failu
                     </label>
                     <span class="file-name" id="modalFileName"></span>
-                    <label>Options:
-                        <input type="text" name="options" placeholder="Options (e.g. sizes, spice level)">
+                    <label>opcijas:
+                        <input type="text" name="options" placeholder="opcijas (piemēram- izmēri, asuma līmenis)">
                     </label>
-                    <label><input type="checkbox" name="available" checked> Available</label>
+                    <label><input type="checkbox" name="available" checked> pieejams</label>
                     <div class="modal-actions">
-                        <button type="button" onclick="closeAddModal()">Cancel</button>
-                        <button type="submit" name="add_item">Add Item</button>
+                        <button type="button" onclick="closeAddModal()">atcelt</button>
+                        <button type="submit" name="add_item">pievienot ēdienu</button>
                     </div>
                 </form>
             </div>
@@ -347,11 +347,11 @@ if ($conn) $conn->close();
         <table>
             <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th class="menu-items-table-price">Price (€)</th>
-                <th>Available</th>
+                <th>Nosaukums</th>
+                <th>Apraksts</th>
+                <th>kategorija</th>
+                <th class="menu-items-table-price">cena (€)</th>
+                <th>pieejams</th>
             </tr>
             <?php if (!empty($menu) && is_array($menu)): ?>
             <?php foreach ($menu as $idx => $item): ?>
@@ -359,10 +359,10 @@ if ($conn) $conn->close();
             <tr class="menu-item-block <?php echo $idx % 2 === 0 ? 'even' : 'odd'; ?>">
                 <td><?php echo isset($item['id']) ? $item['id'] : ''; ?><input type="hidden" name="id" value="<?php echo isset($item['id']) ? $item['id'] : ''; ?>"></td>
                 <td><input type="text" name="name" value="<?php echo htmlspecialchars(isset($item['name']) ? $item['name'] : ''); ?>" required></td>
-                <td><textarea name="description" placeholder="Description" style="width:120px;vertical-align:top;"><?php echo htmlspecialchars($item['description'] ?? ''); ?></textarea></td>
+                <td><textarea name="description" placeholder="apraksts" style="width:120px;vertical-align:top;"><?php echo htmlspecialchars($item['description'] ?? ''); ?></textarea></td>
                 <td>
                     <select name="category_id">
-                        <option value="">Select Category</option>
+                        <option value="">izvēlies kategoriju</option>
                         <?php foreach ($categories as $cat): ?>
                             <option value="<?php echo $cat['id']; ?>" <?php if (isset($item) && isset($item['category_id']) && $item['category_id'] == $cat['id']) echo 'selected'; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
                         <?php endforeach; ?>
@@ -379,7 +379,7 @@ if ($conn) $conn->close();
                             <input type="file" id="tableImageInput<?php echo isset($item['id']) ? $item['id'] : ''; ?>" name="image" accept="image/*" style="display:none;" onchange="showTableFileName(this, <?php echo isset($item['id']) ? $item['id'] : ''; ?>)">
                             <label for="tableImageInput<?php echo isset($item['id']) ? $item['id'] : ''; ?>" class="custom-file-label-table">
                                 <svg viewBox="0 0 20 20"><path d="M16.88 9.94a1 1 0 0 0-1.41 0l-3.17 3.17V3a1 1 0 1 0-2 0v10.11l-3.17-3.17a1 1 0 0 0-1.41 1.41l5 5a1 1 0 0 0 1.41 0l5-5a1 1 0 0 0 0-1.41z"/></svg>
-                                Choose File
+                                izvēlies failu
                             </label>
                             <span class="file-name" id="tableFileName<?php echo isset($item['id']) ? $item['id'] : ''; ?>"></span>
                             <?php if (!empty($item['image_path'])): ?>
@@ -387,11 +387,11 @@ if ($conn) $conn->close();
                             <?php endif; ?>
                         </div>
                         <div>
-                            <input type="text" name="options" value="<?php echo htmlspecialchars($item['options'] ?? ''); ?>" placeholder="Options" style="width:160px;">
+                            <input type="text" name="options" value="<?php echo htmlspecialchars($item['options'] ?? ''); ?>" placeholder="opcijas" style="width:160px;">
                         </div>
                         <div class="actions">
-                            <button type="submit" name="edit_item">Save</button>
-                            <button type="submit" name="delete_item" onclick="return confirm('Delete this item?');">Delete</button>
+                            <button type="submit" name="edit_item">saglabāt</button>
+                            <button type="submit" name="delete_item" onclick="return confirm('Delete this item?');">dzēst</button>
                         </div>
                     </div>
                 </td>
@@ -399,7 +399,7 @@ if ($conn) $conn->close();
             </form>
             <?php endforeach; ?>
             <?php else: ?>
-            <tr><td colspan="6" style="text-align: center; padding: 20px;">No menu items found. Add some items to get started.</td></tr>
+            <tr><td colspan="6" style="text-align: center; padding: 20px;">ēdienkarte ir tukša. pievieno ēdienu lai veiktu darbības</td></tr>
             <?php endif; ?>
         </table>
     </div>

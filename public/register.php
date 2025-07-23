@@ -35,29 +35,29 @@ foreach ($orders as $order) {
 <body>
 <div class="container">
     <div class="header">
-        <h1>💰 Register</h1>
-        <div class="subtitle">Orders & Payment Management</div>
+        <h1>💰 Kase</h1>
+        <div class="subtitle">Pasūtījumu un maksājumu pārvaldība</div>
     </div>
     
     <div class="content">
         <?php if (empty($orders)): ?>
             <div class="empty-state">
                 <div class="empty-icon">💳</div>
-                <div>No orders yet.</div>
-                <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">Orders will appear here when customers place them.</div>
+                <div>Vēl nav pasūtījumu.</div>
+                <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">Pasūtījumi tiks parādīti šeit, kad klienti tos veiks.</div>
             </div>
         <?php else: ?>
             <?php foreach ($tables as $table_id => $table_orders): ?>
                 <div class="table-section">
                     <div class="table-header">
-                        <div class="table-number">Table <?php echo $table_id; ?></div>
+                        <div class="table-number">Galds <?php echo $table_id; ?></div>
                         <?php 
                         $tableTotal = 0;
                         foreach ($table_orders as $order) {
                             $tableTotal += get_order_total($order['id']);
                         }
                         ?>
-                        <div class="table-total">Total: €<?php echo number_format($tableTotal, 2); ?></div>
+                        <div class="table-total">Kopā: €<?php echo number_format($tableTotal, 2); ?></div>
                     </div>
                     
                     <div class="orders-grid">
@@ -73,7 +73,7 @@ foreach ($orders as $order) {
                                     <?php if ($order['status'] !== 'paid'): ?>
                                         <form method="post" action="register.php" style="margin:0;">
                                             <input type="hidden" name="mark_paid" value="<?php echo $order['id']; ?>">
-                                            <button class="action-btn" type="submit">💰 Mark as Paid</button>
+                                            <button class="action-btn" type="submit">💰 Atzīmēt kā apmaksātu</button>
                                         </form>
                                     <?php endif; ?>
                                 </div>
@@ -101,7 +101,7 @@ foreach ($orders as $order) {
                                 </div>
                                 
                                 <div class="order-total">
-                                    <span>Order Total:</span>
+                                    <span>Pasūtījuma kopsumma:</span>
                                     <span class="total-amount">€<?php echo number_format(get_order_total($order['id']), 2); ?></span>
                                 </div>
                             </div>
