@@ -1,7 +1,9 @@
 <?php
+require_once __DIR__ . '/../includes/db.php';
+
 // generate_qr.php?table=1
 $table = isset($_GET['table']) ? intval($_GET['table']) : 0;
-if ($table < 1 || $table > 3) {
+if ($table < 1 || $table > get_table_count()) {
     http_response_code(400);
     echo 'Invalid table number.';
     exit;

@@ -23,7 +23,7 @@ foreach ($qtys as $item_id => $qty) {
     }
 }
 
-if ($table_id < 1 || $table_id > 3) {
+if ($table_id < 1 || $table_id > get_table_count()) {
     die('Invalid table number.');
 }
 if (empty($items)) {

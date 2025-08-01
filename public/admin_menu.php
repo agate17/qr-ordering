@@ -237,6 +237,22 @@ if ($conn && isset($_POST['show_report'])) {
         $report_total += floatval($row['order_total']);
     }
 }
+
+// Handle restaurant settings update
+if ($conn && isset($_POST['update_settings'])) {
+    $table_count = intval($_POST['table_count']);
+    if ($table_count >= 1 && $table_count <= 50) {
+        update_restaurant_setting('table_count', $table_count);
+        $feedback = 'Restaurant settings updated.';
+        $feedback_type = 'success';
+    } else {
+        $feedback = 'Table count must be between 1 and 50.';
+        $feedback_type = 'error';
+    }
+}
+
+// Get current settings
+$current_table_count = get_table_count();
 if ($conn) $conn->close();
 ?>
 <!DOCTYPE html>
@@ -278,6 +294,19 @@ if ($conn) $conn->close();
                 <?php endforeach; ?>
             </table>
         <?php endif; ?>
+    </div>
+    <!-- Add this section before the categories section -->
+    <div class="section">
+        <h1>Restorāna iestatījumi</h1>
+        <form method="post" class="form-row">
+            <label>Galdu skaits: 
+                <input type="number" name="table_count" value="<?php echo $current_table_count; ?>" min="1" max="50" required>
+            </label>
+            <button type="submit" name="update_settings">Saglabāt iestatījumus</button>
+        </form>
+        <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+            Pašreiz ir <?php echo $current_table_count; ?> galdi. Mainot šo skaitu, automātiski tiks atjaunināti QR kodi un ēdienkaršu saites.
+        </p>
     </div>
     <div class="section">
         <h1>Pārvaldīt kategorijas</h1>

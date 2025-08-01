@@ -169,3 +169,45 @@ function format_customizations($customization_json) {
         return '';
     }
 } 
+
+// Add these functions to db.php
+
+function get_restaurant_setting($key, $default = null) {
+    $conn = db_connect();
+    if ($conn) {
+        $key_escaped = $conn->real_escape_string($key);
+        $res = $conn->query("SELECT setting_value FROM restaurant_settings WHERE setting_key='$key_escaped'");
+        if ($res && $res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $conn->close();
+            return $row['setting_value'];
+        }
+        $conn->close();
+    }
+    return $default;
+}
+
+function update_restaurant_setting($key, $value) {
+    $conn = db_connect();
+    if ($conn) {
+        $key_escaped = $conn->real_escape_string($key);
+        $value_escaped = $conn->real_escape_string($value);
+        $conn->query("INSERT INTO restaurant_settings (setting_key, setting_value) VALUES ('$key_escaped', '$value_escaped') ON DUPLICATE KEY UPDATE setting_value='$value_escaped'");
+        $conn->close();
+        return true;
+    }
+    return false;
+}
+
+function get_table_count() {
+    return intval(get_restaurant_setting('table_count', 3));
+}
+
+function get_table_list() {
+    $count = get_table_count();
+    $tables = [];
+    for ($i = 1; $i <= $count; $i++) {
+        $tables[] = $i;
+    }
+    return $tables;
+}

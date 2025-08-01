@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
 $table_id = isset($_GET['table']) ? intval($_GET['table']) : 0;
-if ($table_id < 1 || $table_id > 3) {
+if ($table_id < 1 || $table_id > get_table_count()) {
     die('Invalid or missing table number.');
 }
 $menu = get_menu_items();
