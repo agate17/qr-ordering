@@ -362,9 +362,12 @@ if ($conn) $conn->close();
                         izvēlies failu
                     </label>
                     <span class="file-name" id="modalFileName"></span>
+                    <!--
                     <label>opcijas:
                         <input type="text" name="options" placeholder="opcijas (piemēram- izmēri, asuma līmenis)">
                     </label>
+                    -->
+
                     <label><input type="checkbox" name="available" checked> pieejams</label>
                     <div class="modal-actions">
                         <button type="button" onclick="closeAddModal()">atcelt</button>
@@ -415,9 +418,11 @@ if ($conn) $conn->close();
                                 <img src="<?php echo htmlspecialchars($item['image_path']); ?>" class="menu-thumb" alt="Image">
                             <?php endif; ?>
                         </div>
+                        <!--
                         <div>
                             <input type="text" name="options" value="<?php echo htmlspecialchars($item['options'] ?? ''); ?>" placeholder="opcijas" style="width:160px;">
                         </div>
+                            -->
                         <div class="actions">
                             <button type="submit" name="edit_item">saglabāt</button>
                             <button type="submit" name="delete_item" onclick="return confirm('Delete this item?');">dzēst</button>
