@@ -52,3 +52,19 @@
 2025-07-24 10:27:57 Query: UPDATE orders SET status='prepared' WHERE id=21
 2025-07-24 10:28:12 update_order_status called with order_id=21, status=paid
 2025-07-24 10:28:12 Query: UPDATE orders SET status='paid' WHERE id=21
+2025-08-04 20:51:30 update_order_status called with order_id=25, status=preparing
+2025-08-04 20:51:30 Query: UPDATE orders SET status='preparing' WHERE id=25
+2025-08-04 20:51:33 update_order_status called with order_id=25, status=prepared
+2025-08-04 20:51:33 Query: UPDATE orders SET status='prepared' WHERE id=25
+2025-08-04 20:51:42 update_order_status called with order_id=25, status=paid
+2025-08-04 20:51:42 Query: UPDATE orders SET status='paid' WHERE id=25
+2025-08-06 20:54:16 update_order_status called with order_id=23, status=paid
+2025-08-06 20:54:16 Query: UPDATE orders SET status='paid' WHERE id=23
+2025-08-06 20:54:18 update_order_status called with order_id=24, status=paid
+2025-08-06 20:54:18 Query: UPDATE orders SET status='paid' WHERE id=24
+2025-08-06 20:54:20 update_order_status called with order_id=22, status=paid
+2025-08-06 20:54:20 Query: UPDATE orders SET status='paid' WHERE id=22
+2025-08-06 20:58:17 update_order_status called with order_id=27, status=paid
+2025-08-06 20:58:17 Query: UPDATE orders SET status='paid' WHERE id=27
+2025-08-06 20:58:18 update_order_status called with order_id=26, status=paid
+2025-08-06 20:58:18 Query: UPDATE orders SET status='paid' WHERE id=26
