@@ -37,8 +37,15 @@ $kitchen_orders = array_filter($orders, function($o) {
 <body>
 <div class="container">
     <div class="header">
-        <h1>🍳 Pasūtījumi</h1>
-        <div class="subtitle">Ienākošie pasūtījumi no klientiem</div>
+        <div class="header-content">
+            <div class="header-text">
+                <h1>🍳 Pasūtījumi</h1>
+                <div class="subtitle">Ienākošie pasūtījumi no klientiem</div>
+            </div>
+            <button id="fullscreenBtn" class="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+                <span id="fullscreenIcon">⛶</span>
+            </button>
+        </div>
     </div>
     
     <?php if (empty($kitchen_orders)): ?>
@@ -104,6 +111,95 @@ $kitchen_orders = array_filter($orders, function($o) {
     <?php endif; ?>
 </div>
 
+<script>
+function toggleFullscreen() {
+    const btn = document.getElementById('fullscreenBtn');
+    const icon = document.getElementById('fullscreenIcon');
+    
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+            icon.textContent = '⛷'; // Exit fullscreen icon
+            btn.title = 'Exit Fullscreen';
+        }).catch(err => {
+            console.error('Error attempting to enable fullscreen:', err);
+        });
+    } else {
+        document.exitFullscreen().then(() => {
+            icon.textContent = '⛶'; // Enter fullscreen icon
+            btn.title = 'Toggle Fullscreen';
+        }).catch(err => {
+            console.error('Error attempting to exit fullscreen:', err);
+        });
+    }
+}
+
+// Listen for fullscreen changes (e.g., when user presses ESC)
+document.addEventListener('fullscreenchange', function() {
+    const icon = document.getElementById('fullscreenIcon');
+    const btn = document.getElementById('fullscreenBtn');
+    
+    if (document.fullscreenElement) {
+        icon.textContent = '⛷';
+        btn.title = 'Exit Fullscreen';
+    } else {
+        icon.textContent = '⛶';
+        btn.title = 'Toggle Fullscreen';
+    }
+});
+</script>
+
+<style>
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-text {
+    flex: 1;
+}
+
+.fullscreen-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.fullscreen-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+}
+
+.fullscreen-btn:active {
+    transform: scale(0.95);
+}
+
+/* Fullscreen adjustments */
+:fullscreen .container {
+    max-width: none;
+    padding: 20px;
+}
+
+:fullscreen .header {
+    margin-bottom: 20px;
+}
+</style>
 
 </body>
-</html> 
+</html>

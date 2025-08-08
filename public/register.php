@@ -87,8 +87,15 @@ $table_list = get_table_list();
 <body>
 <div class="container">
     <div class="header">
-        <h1>💰 Kase</h1>
-        <div class="subtitle">Pasūtījumu un maksājumu pārvaldība</div>
+        <div class="header-content">
+            <div class="header-text">
+                <h1>💰 Kase</h1>
+                <div class="subtitle">Pasūtījumu un maksājumu pārvaldība</div>
+            </div>
+            <button id="fullscreenBtn" class="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+                <span id="fullscreenIcon">⛶</span>
+            </button>
+        </div>
     </div>
     
     <?php if ($order_success): ?>
@@ -337,6 +344,41 @@ function updateOrderSummary() {
     }
 }
 
+function toggleFullscreen() {
+    const btn = document.getElementById('fullscreenBtn');
+    const icon = document.getElementById('fullscreenIcon');
+    
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+            icon.textContent = '⛷'; // Exit fullscreen icon
+            btn.title = 'Exit Fullscreen';
+        }).catch(err => {
+            console.error('Error attempting to enable fullscreen:', err);
+        });
+    } else {
+        document.exitFullscreen().then(() => {
+            icon.textContent = '⛶'; // Enter fullscreen icon
+            btn.title = 'Toggle Fullscreen';
+        }).catch(err => {
+            console.error('Error attempting to exit fullscreen:', err);
+        });
+    }
+}
+
+// Listen for fullscreen changes (e.g., when user presses ESC)
+document.addEventListener('fullscreenchange', function() {
+    const icon = document.getElementById('fullscreenIcon');
+    const btn = document.getElementById('fullscreenBtn');
+    
+    if (document.fullscreenElement) {
+        icon.textContent = '⛷';
+        btn.title = 'Exit Fullscreen';
+    } else {
+        icon.textContent = '⛶';
+        btn.title = 'Toggle Fullscreen';
+    }
+});
+
 // Close modal when clicking outside
 document.getElementById('orderModal').addEventListener('click', function(e) {
     if (e.target === this) {
@@ -358,5 +400,68 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<style>
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin: 30px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-text {
+    flex: 1;
+}
+
+.fullscreen-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.fullscreen-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+}
+
+.fullscreen-btn:active {
+    transform: scale(0.95);
+}
+
+/* Fullscreen adjustments */
+:fullscreen .container {
+    max-width: none;
+    padding: 20px;
+}
+
+:fullscreen .header {
+    margin-bottom: 20px;
+}
+
+/* Make modal work well in fullscreen */
+:fullscreen .order-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+</style>
+
 </body>
 </html>
