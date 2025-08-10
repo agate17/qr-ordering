@@ -80,9 +80,6 @@ $table_list = get_table_list();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Orders & Payments</title>
     <link rel="stylesheet" type="text/css" href="assets/css/register.css?v=<?php echo time(); ?>">
-    <script>
-        setTimeout(function(){ location.reload(); }, 10000);
-    </script>
 </head>
 <body>
 <div class="container">
@@ -282,9 +279,66 @@ $table_list = get_table_list();
 // Menu data for JavaScript
 const menuData = <?php echo json_encode($menu); ?>;
 
+// AJAX polling variables
+let pollInterval;
+let isModalOpen = false;
+
+// Helper functions (DEFINE THESE FIRST)
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatTime(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
+}
+
+function formatCustomizations(customizations) {
+    if (!customizations) return '';
+    
+    let parsed;
+    
+    // If it's a string, try to parse as JSON
+    if (typeof customizations === 'string') {
+        try {
+            parsed = JSON.parse(customizations);
+        } catch (e) {
+            // If it's not JSON, just return the string
+            return customizations;
+        }
+    } else {
+        parsed = customizations;
+    }
+    
+    let result = [];
+    
+    // Handle allergies
+    if (parsed.allergies && parsed.allergies.length > 0) {
+        result.push(`<strong>Alerģijas:</strong> ${parsed.allergies.join(', ')}`);
+    }
+    
+    // Handle removed ingredients
+    if (parsed.remove_ingredients && parsed.remove_ingredients.length > 0) {
+        result.push(`<strong>Neietvert:</strong> ${parsed.remove_ingredients.join(', ')}`);
+    }
+    
+    // Handle special requests
+    if (parsed.special_requests && parsed.special_requests.trim() !== '') {
+        result.push(`<strong>Īpašas prasības:</strong> ${parsed.special_requests}`);
+    }
+    
+    return result.join('<br>');
+}
+
+// UPDATED modal functions
 function openOrderModal() {
     document.getElementById('orderModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    isModalOpen = true;
+    stopPolling(); // Stop polling when modal is open
 }
 
 function closeOrderModal() {
@@ -293,8 +347,157 @@ function closeOrderModal() {
     // Reset form
     document.getElementById('newOrderForm').reset();
     updateOrderSummary();
+    isModalOpen = false;
+    startPolling(); // Resume polling when modal is closed
+    fetchOrderData(); // Immediate update when closing modal
 }
 
+// Fetch fresh order data via AJAX
+async function fetchOrderData() {
+    try {
+        const response = await fetch('get_orders.php');
+        if (!response.ok) throw new Error('Network response was not ok');
+        
+        const data = await response.json();
+        if (data.success) {
+            updateOrdersDisplay(data);
+        }
+    } catch (error) {
+        console.error('Error fetching orders:', error);
+        // Don't auto-reload - just log the error for now
+        console.log('AJAX failed - check if get_orders.php exists and works');
+    }
+}
+
+// Update the orders display without full page reload
+function updateOrdersDisplay(data) {
+    const contentDiv = document.querySelector('.content');
+    
+    if (!data.orders || data.orders.length === 0) {
+        contentDiv.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💳</div>
+                <div>Vēl nav pasūtījumu.</div>
+                <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">
+                    Pasūtījumi tiks parādīti šeit, kad klienti tos veiks.
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Group orders by table
+    const tables = {};
+    data.orders.forEach(order => {
+        if (!tables[order.table_id]) tables[order.table_id] = [];
+        tables[order.table_id].push(order);
+    });
+    
+    let html = '';
+    Object.keys(tables).forEach(tableId => {
+        const tableOrders = tables[tableId];
+        const tableTotal = tableOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+        
+        html += `
+            <div class="table-section">
+                <div class="table-header">
+                    <div class="table-number">Galds ${tableId}</div>
+                    <div class="table-total">Kopā: €${tableTotal.toFixed(2)}</div>
+                </div>
+                <div class="orders-grid">
+        `;
+        
+        tableOrders.forEach(order => {
+            html += generateOrderCardHTML(order, data.menu);
+        });
+        
+        html += '</div></div>';
+    });
+    
+    contentDiv.innerHTML = html;
+}
+
+// Generate HTML for individual order card
+function generateOrderCardHTML(order, menuItems) {
+    let itemsHTML = '';
+    order.items.forEach(item => {
+        const menuItem = menuItems[item.menu_item_id];
+        if (menuItem) {
+            const itemTotal = menuItem.price * item.quantity;
+            
+            itemsHTML += `
+                <div class="item-row">
+                    <div class="item-name">${escapeHtml(menuItem.name)}</div>
+                    <div class="item-quantity">x${item.quantity}</div>
+                    <div class="item-price">€${itemTotal.toFixed(2)}</div>
+                </div>
+            `;
+            
+            // Add customizations if they exist - format them properly
+            if (item.customizations) {
+                const formattedCustomizations = formatCustomizations(item.customizations);
+                if (formattedCustomizations) {
+                    itemsHTML += `<div class="customizations">${formattedCustomizations}</div>`;
+                }
+            }
+        }
+    });
+    
+    return `
+        <div class="order-card">
+            <div class="order-header">
+                <div class="order-info">
+                    <div class="order-id">Order #${order.id}</div>
+                    <div class="order-time">${formatTime(order.created_at)}</div>
+                    <div class="status-badge status-${order.status}">${order.status}</div>
+                </div>
+                ${order.status !== 'paid' ? `
+                    <form method="post" action="register.php" style="margin:0;">
+                        <input type="hidden" name="mark_paid" value="${order.id}">
+                        <button class="action-btn" type="submit">💰 Atzīmēt kā apmaksātu</button>
+                    </form>
+                ` : ''}
+            </div>
+            <div class="order-items">${itemsHTML}</div>
+            <div class="order-total">
+                <span>Pasūtījuma kopsumma:</span>
+                <span class="total-amount">€${parseFloat(order.total).toFixed(2)}</span>
+            </div>
+        </div>
+    `;
+}
+
+// Helper functions
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatTime(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
+}
+
+// Polling control
+function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(() => {
+        if (!isModalOpen) {
+            fetchOrderData();
+        }
+    }, 2000); // Poll every 2 seconds - fast and responsive!
+}
+
+function stopPolling() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+}
+
+// EXISTING functions (keep these as they were)
 function changeQuantity(itemId, change) {
     const input = document.getElementById('qty_' + itemId);
     const newValue = Math.max(0, Math.min(10, parseInt(input.value || 0) + change));
@@ -350,14 +553,14 @@ function toggleFullscreen() {
     
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().then(() => {
-            icon.textContent = '⛷'; // Exit fullscreen icon
+            icon.textContent = '⛷';
             btn.title = 'Exit Fullscreen';
         }).catch(err => {
             console.error('Error attempting to enable fullscreen:', err);
         });
     } else {
         document.exitFullscreen().then(() => {
-            icon.textContent = '⛶'; // Enter fullscreen icon
+            icon.textContent = '⛶';
             btn.title = 'Toggle Fullscreen';
         }).catch(err => {
             console.error('Error attempting to exit fullscreen:', err);
@@ -365,7 +568,7 @@ function toggleFullscreen() {
     }
 }
 
-// Listen for fullscreen changes (e.g., when user presses ESC)
+// Listen for fullscreen changes
 document.addEventListener('fullscreenchange', function() {
     const icon = document.getElementById('fullscreenIcon');
     const btn = document.getElementById('fullscreenBtn');
@@ -386,7 +589,7 @@ document.getElementById('orderModal').addEventListener('click', function(e) {
     }
 });
 
-// Initialize on page load
+// UPDATED Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     updateOrderSummary();
     
@@ -397,6 +600,21 @@ document.addEventListener('DOMContentLoaded', function() {
             feedback.style.opacity = '0';
             setTimeout(() => feedback.remove(), 500);
         }, 5000);
+    });
+    
+    // Start the AJAX polling system
+    startPolling();
+    
+    // Stop polling when page is about to unload
+    window.addEventListener('beforeunload', stopPolling);
+    
+    // Pause polling when tab is not visible (saves resources)
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopPolling();
+        } else if (!isModalOpen) {
+            startPolling();
+        }
     });
 });
 </script>

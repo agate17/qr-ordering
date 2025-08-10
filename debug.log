@@ -86,3 +86,27 @@
 2025-08-08 23:00:30 Query: UPDATE orders SET status='prepared' WHERE id=28
 2025-08-09 18:53:32 update_order_status called with order_id=33, status=preparing
 2025-08-09 18:53:32 Query: UPDATE orders SET status='preparing' WHERE id=33
+2025-08-10 18:07:18 update_order_status called with order_id=37, status=paid
+2025-08-10 18:07:18 Query: UPDATE orders SET status='paid' WHERE id=37
+2025-08-10 18:07:20 update_order_status called with order_id=38, status=paid
+2025-08-10 18:07:20 Query: UPDATE orders SET status='paid' WHERE id=38
+2025-08-10 18:07:20 update_order_status called with order_id=38, status=paid
+2025-08-10 18:07:20 Query: UPDATE orders SET status='paid' WHERE id=38
+2025-08-10 18:07:20 Order status update failed for order_id=38, status=paid
+2025-08-10 18:07:20 update_order_status called with order_id=38, status=paid
+2025-08-10 18:07:20 Query: UPDATE orders SET status='paid' WHERE id=38
+2025-08-10 18:07:20 Order status update failed for order_id=38, status=paid
+2025-08-10 18:07:22 update_order_status called with order_id=36, status=paid
+2025-08-10 18:07:22 Query: UPDATE orders SET status='paid' WHERE id=36
+2025-08-10 18:07:23 update_order_status called with order_id=35, status=paid
+2025-08-10 18:07:23 Query: UPDATE orders SET status='paid' WHERE id=35
+2025-08-10 18:07:24 update_order_status called with order_id=34, status=paid
+2025-08-10 18:07:24 Query: UPDATE orders SET status='paid' WHERE id=34
+2025-08-10 18:07:25 update_order_status called with order_id=33, status=paid
+2025-08-10 18:07:25 Query: UPDATE orders SET status='paid' WHERE id=33
+2025-08-10 18:07:25 update_order_status called with order_id=32, status=paid
+2025-08-10 18:07:25 Query: UPDATE orders SET status='paid' WHERE id=32
+2025-08-10 18:07:26 update_order_status called with order_id=31, status=paid
+2025-08-10 18:07:26 Query: UPDATE orders SET status='paid' WHERE id=31
+2025-08-10 18:07:28 update_order_status called with order_id=28, status=paid
+2025-08-10 18:07:28 Query: UPDATE orders SET status='paid' WHERE id=28
