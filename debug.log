@@ -84,3 +84,5 @@
 2025-08-08 23:00:28 Query: UPDATE orders SET status='preparing' WHERE id=28
 2025-08-08 23:00:30 update_order_status called with order_id=28, status=prepared
 2025-08-08 23:00:30 Query: UPDATE orders SET status='prepared' WHERE id=28
+2025-08-09 18:53:32 update_order_status called with order_id=33, status=preparing
+2025-08-09 18:53:32 Query: UPDATE orders SET status='preparing' WHERE id=33
