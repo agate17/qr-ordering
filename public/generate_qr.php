@@ -8,7 +8,7 @@ if ($table < 1 || $table > get_table_count()) {
     echo 'Invalid table number.';
     exit;
 }
-$url = "http://192.168.8.23/qr-ordering/qr-ordering/public/menu.php?table=$table";
+$url = "http://192.168.8.23/qr-ordering/public/menu.php?table=$table";
 
 // home url - 192.168.8.135
 // bouling url - 192.168.8.7 (vismaz iepriekš bij ta)
