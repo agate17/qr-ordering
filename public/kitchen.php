@@ -22,6 +22,12 @@ $menu = get_menu_items();
 $kitchen_orders = array_filter($orders, function($o) {
     return in_array($o['status'], ['pending', 'preparing']);
 });
+
+
+// Filter orders to only show those with kitchen-relevant items
+$filtered_kitchen_orders = array_filter($kitchen_orders, function($order) use ($menu) {
+    return has_kitchen_items($order['id'], $menu);
+});
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,9 +36,6 @@ $kitchen_orders = array_filter($orders, function($o) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kitchen - Incoming Orders</title>
     <link rel="stylesheet" type="text/css" href="assets/css/kitchen.css?v=<?php echo time(); ?>">
-    <script>
-        setTimeout(function(){ location.reload(); }, 10000);
-    </script>
 </head>
 <body>
 <div class="container">
@@ -40,19 +43,31 @@ $kitchen_orders = array_filter($orders, function($o) {
         <div class="header-content">
             <div class="header-text">
                 <h1>🍳 Pasūtījumi 🍳</h1>
+                <div class="subtitle">Virtuves pasūtījumi (bez dzērieniem)</div>
             </div>
+            <button class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+                <span id="fullscreenIcon">⛶</span>
+            </button>
         </div>
     </div>
     
     <div class="content">
-        <?php if (empty($kitchen_orders)): ?>
+        <?php if (empty($filtered_kitchen_orders)): ?>
             <div class="empty-state">
                 <div class="empty-icon">🍽️</div>
-                <div>Pašlaik nav pasūtījumu.</div>
+                <div>Pašlaik nav virtuves pasūtījumu.</div>
                 <div style="font-size: 0.9em; margin-top: 10px; color: #9ca3af;">Pasūtījumi šeit parādīsies automātiski.</div>
+                <div style="font-size: 0.8em; margin-top: 15px; color: #6b7280; font-style: italic;">
+                    (Dzērieni netiek rādīti virtuves logā)
+                </div>
             </div>
         <?php else: ?>
-            <?php foreach ($kitchen_orders as $order): ?>
+            <?php foreach ($filtered_kitchen_orders as $order): ?>
+                <?php 
+                $kitchen_items = get_kitchen_items($order['id'], $menu);
+                // Skip orders with no kitchen items (shouldn't happen due to filtering, but safety check)
+                if (empty($kitchen_items)) continue;
+                ?>
                 <div class="order-card">
                     <div class="order-header">
                         <div class="order-info">
@@ -77,13 +92,18 @@ $kitchen_orders = array_filter($orders, function($o) {
                     
                     <div class="order-items">
                         <?php 
-                        $items = get_order_items($order['id']);
-                        foreach ($items as $item): 
+                        // Only show kitchen-relevant items
+                        foreach ($kitchen_items as $item): 
                             $menuItem = $menu[$item['menu_item_id']];
                             $customizationDisplay = format_customizations(isset($item['customizations']) ? $item['customizations'] : '');
                         ?>
                             <div class="item-row">
-                                <div class="item-name"><?php echo htmlspecialchars($menuItem['name']); ?></div>
+                                <div class="item-details">
+                                    <div class="item-name"><?php echo htmlspecialchars($menuItem['name']); ?></div>
+                                    <?php if (!empty($menuItem['category_name'])): ?>
+                                        <div class="item-category"><?php echo htmlspecialchars($menuItem['category_name']); ?></div>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="item-quantity">x<?php echo $item['quantity']; ?></div>
                             </div>
                             
@@ -94,6 +114,17 @@ $kitchen_orders = array_filter($orders, function($o) {
                             <?php endif; ?>
                         <?php endforeach; ?>
                     </div>
+                    
+                    <?php
+                    // Show info about filtered items if there are drinks in the original order
+                    $all_items = get_order_items($order['id']);
+                    $drinks_count = count($all_items) - count($kitchen_items);
+                    if ($drinks_count > 0):
+                    ?>
+                        <div class="drinks-info">
+                            <small>ℹ️ <?php echo $drinks_count; ?> dzērieni nav rādīti (tiek gatavoti pie bāra)</small>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
@@ -101,6 +132,40 @@ $kitchen_orders = array_filter($orders, function($o) {
 </div>
 
 <script>
+// Auto-refresh every 10 seconds, but with better UX
+let refreshTimer;
+
+function startAutoRefresh() {
+    refreshTimer = setTimeout(function() {
+        // Only refresh if no modals are open and user isn't interacting
+        if (!document.querySelector('.order-card:hover')) {
+            location.reload();
+        } else {
+            // Try again in 2 seconds if user is interacting
+            refreshTimer = setTimeout(() => location.reload(), 2000);
+        }
+    }, 10000);
+}
+
+function stopAutoRefresh() {
+    if (refreshTimer) {
+        clearTimeout(refreshTimer);
+    }
+}
+
+// Pause refresh when user is hovering over cards
+document.addEventListener('DOMContentLoaded', function() {
+    const orderCards = document.querySelectorAll('.order-card');
+    
+    orderCards.forEach(card => {
+        card.addEventListener('mouseenter', stopAutoRefresh);
+        card.addEventListener('mouseleave', startAutoRefresh);
+    });
+    
+    // Start the refresh timer
+    startAutoRefresh();
+});
+
 function toggleFullscreen() {
     const btn = document.getElementById('fullscreenBtn');
     const icon = document.getElementById('fullscreenIcon');
@@ -306,10 +371,24 @@ body {
     border-left: 4px solid #3b82f6;
 }
 
+.item-details {
+    flex: 1;
+}
+
 .item-name {
     font-weight: 600;
     color: #f9fafb;
     font-size: 1.1em;
+    margin-bottom: 5px;
+}
+
+.item-category {
+    font-size: 0.85em;
+    color: #9ca3af;
+    background: rgba(156, 163, 175, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-block;
 }
 
 .item-quantity {
@@ -338,6 +417,17 @@ body {
 
 .customizations strong {
     color: #fbbf24;
+}
+
+.drinks-info {
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 6px;
+    text-align: center;
+    color: #93c5fd;
+    font-style: italic;
 }
 
 .action-btn {
@@ -456,6 +546,10 @@ body {
     
     .action-btn {
         width: 100%;
+    }
+    
+    .item-category {
+        font-size: 0.8em;
     }
 }
 </style>

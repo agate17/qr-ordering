@@ -160,3 +160,7 @@
 2025-08-11 22:50:16 Query: UPDATE orders SET status='paid' WHERE id=52
 2025-08-11 22:50:17 update_order_status called with order_id=51, status=paid
 2025-08-11 22:50:17 Query: UPDATE orders SET status='paid' WHERE id=51
+2025-08-11 22:52:43 update_order_status called with order_id=56, status=paid
+2025-08-11 22:52:43 Query: UPDATE orders SET status='paid' WHERE id=56
+2025-08-11 23:24:54 update_order_status called with order_id=60, status=paid
+2025-08-11 23:24:54 Query: UPDATE orders SET status='paid' WHERE id=60

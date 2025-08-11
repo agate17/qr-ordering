@@ -211,3 +211,94 @@ function get_table_list() {
     }
     return $tables;
 }
+
+// Function to get all drink category names (centralized configuration)
+function get_drink_categories() {
+    return [
+        'dzērieni',                    // Current drinks category
+        'bezalkoholiskie dzērieni',    // Non-alcoholic drinks
+        'alkoholiskie dzērieni',       // Alcoholic drinks
+        // Add more drink categories here as needed
+    ];
+}
+
+// Updated function to check if an order has kitchen-relevant items
+function has_kitchen_items($order_id, $menu_items) {
+    $items = get_order_items($order_id);
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // If item has no category or is not a drink category, it belongs in kitchen
+        if (empty($category) || !in_array($category, $drink_categories)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Updated function to get only kitchen-relevant items from an order
+function get_kitchen_items($order_id, $menu_items) {
+    $items = get_order_items($order_id);
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $kitchen_items = [];
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // Include item if it has no category or is not a drink category
+        if (empty($category) || !in_array($category, $drink_categories)) {
+            $kitchen_items[] = $item;
+        }
+    }
+    
+    return $kitchen_items;
+}
+
+// Updated function to filter items for kitchen view (for get_orders.php)
+function filter_kitchen_items($items, $menu_items) {
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $filtered_items = [];
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // Include item if it has no category or is not a drink category
+        if (empty($category) || !in_array($category, $drink_categories)) {
+            $filtered_items[] = $item;
+        }
+    }
+    
+    return $filtered_items;
+}
+
+// Optional: Function to check if a specific item is a drink
+function is_drink_item($menu_item) {
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $category = strtolower(trim($menu_item['category_name'] ?? ''));
+    
+    return !empty($category) && in_array($category, $drink_categories);
+}
+
+// Optional: Function to get only drink items from an order (for bar/drinks station)
+function get_drink_items($order_id, $menu_items) {
+    $items = get_order_items($order_id);
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $drink_items = [];
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // Include item if it's in a drink category
+        if (!empty($category) && in_array($category, $drink_categories)) {
+            $drink_items[] = $item;
+        }
+    }
+    
+    return $drink_items;
+}

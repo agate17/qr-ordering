@@ -17,6 +17,11 @@ foreach ($menu as $item) {
         $uncategorized[] = $item;
     }
 }
+
+// Function to check if item is alcoholic
+function is_alcoholic_item($category_name) {
+    return strtolower(trim($category_name ?? '')) === 'alkoholiskie dzērieni';
+}
 ?> 
 <!DOCTYPE html>
 <html lang="en">
@@ -36,6 +41,63 @@ foreach ($menu as $item) {
         .food-image:before {
             display: none !important;
             content: none !important;
+        }
+        
+        /* Styles for alcoholic items */
+        .menu-item.alcoholic {
+            position: relative;
+            opacity: 0.8;
+        }
+        
+        .menu-item.alcoholic::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: inherit;
+            pointer-events: none;
+        }
+        
+        .alcoholic-notice {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 10px;
+            box-shadow: 0 2px 4px rgba(231, 76, 60, 0.2);
+        }
+        
+        .alcoholic-notice i {
+            margin-right: 5px;
+        }
+        
+        .item-controls.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        .item-controls.disabled .quantity-btn,
+        .item-controls.disabled .quantity-input,
+        .item-controls.disabled .customize-btn {
+            cursor: not-allowed;
+            background: #bdc3c7;
+        }
+        
+        /* Add visual indicator to category title */
+        .category-title.alcoholic-category {
+            color: #e74c3c;
+            border-left: 4px solid #e74c3c;
+            padding-left: 15px;
+        }
+        
+        .category-title.alcoholic-category::after {
+            content: " 🍷";
         }
     </style>
 </head>
@@ -72,10 +134,14 @@ foreach ($menu as $item) {
             <!-- Display categorized items -->
             <?php foreach ($categories as $category_name => $category_items): ?>
             <div class="category-section" data-category="<?php echo htmlspecialchars($category_name); ?>">
-                <h2 class="category-title"><?php echo htmlspecialchars($category_name); ?></h2>
+                <h2 class="category-title <?php echo is_alcoholic_item($category_name) ? 'alcoholic-category' : ''; ?>">
+                    <?php echo htmlspecialchars($category_name); ?>
+                </h2>
                 <div class="menu-grid">
-                    <?php foreach ($category_items as $item): ?>
-                    <div class="menu-item">
+                    <?php foreach ($category_items as $item): 
+                        $is_alcoholic = is_alcoholic_item($item['category_name']);
+                    ?>
+                    <div class="menu-item <?php echo $is_alcoholic ? 'alcoholic' : ''; ?>">
                         <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
                             <?php if (!empty($item['image_path'])): ?>
                                 <img src="<?php echo htmlspecialchars($item['image_path']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
@@ -88,26 +154,35 @@ foreach ($menu as $item) {
                             </div>
                             <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
                             
-                            <div class="item-controls">
-                                <div class="quantity-controls">
-                                    <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
-                                    <input type="number" 
-                                           class="quantity-input" 
-                                           name="qty[<?php echo $item['id']; ?>]" 
-                                           id="qty_<?php echo $item['id']; ?>"
-                                           min="0" 
-                                           max="10" 
-                                           value="0"
-                                           onchange="updateOrderSummary()">
-                                    <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                            <?php if ($is_alcoholic): ?>
+                                <!-- Alcoholic items - show notice instead of controls -->
+                                <div class="alcoholic-notice">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    Pieejams tikai pie bāra
                                 </div>
-                                <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
-                                    Pielāgot
-                                </button>
-                            </div>
-                            
-                            <!-- Hidden customization fields -->
-                            <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
+                            <?php else: ?>
+                                <!-- Regular items - normal controls -->
+                                <div class="item-controls">
+                                    <div class="quantity-controls">
+                                        <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
+                                        <input type="number" 
+                                               class="quantity-input" 
+                                               name="qty[<?php echo $item['id']; ?>]" 
+                                               id="qty_<?php echo $item['id']; ?>"
+                                               min="0" 
+                                               max="10" 
+                                               value="0"
+                                               onchange="updateOrderSummary()">
+                                        <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                                    </div>
+                                    <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
+                                        Pielāgot
+                                    </button>
+                                </div>
+                                
+                                <!-- Hidden customization fields -->
+                                <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
+                            <?php endif; ?>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -385,4 +460,4 @@ categoryFilter.addEventListener('change', function() {
 });
 </script>
 </body>
-</html> 
+</html>
