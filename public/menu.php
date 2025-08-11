@@ -181,36 +181,6 @@ foreach ($menu as $item) {
             <h3 class="modal-title" id="modalTitle">Pielāgo savu ēdienu:</h3>
             <button class="close-btn" onclick="closeCustomize()">&times;</button>
         </div>
-        
-        <div class="customization-section">
-            <div class="section-title">Informācija par alerģijām:</div>
-            <div class="allergy-options">
-                <div class="allergy-option">
-                    <input type="checkbox" id="allergy_gluten" name="allergies[]" value="gluten">
-                    <label for="allergy_gluten">Bez glutēna/Gluten free</label>
-                </div>
-                <div class="allergy-option">
-                    <input type="checkbox" id="allergy_dairy" name="allergies[]" value="dairy">
-                    <label for="allergy_dairy">Bez piena produktiem/Dairy Free</label>
-                </div>
-                <div class="allergy-option">
-                    <input type="checkbox" id="allergy_nuts" name="allergies[]" value="nuts">
-                    <label for="allergy_nuts">Bez riekstiem/No nuts</label>
-                </div>
-                <div class="allergy-option">
-                    <input type="checkbox" id="allergy_eggs" name="allergies[]" value="eggs">
-                    <label for="allergy_eggs">Bez olām/No Eggs</label>
-                </div>
-                <div class="allergy-option">
-                    <input type="checkbox" id="allergy_seafood" name="allergies[]" value="seafood">
-                    <label for="allergy_seafood">Bez jūras veltēm/No Seafood</label>
-                </div>
-                <div class="allergy-option">
-                    <input type="checkbox" id="allergy_soy" name="allergies[]" value="soy">
-                    <label for="allergy_soy">Bez sojas/No Soy</label>
-                </div>
-            </div>
-        </div>
 
         <div class="customization-section">
             <div class="section-title">Īpašas prasības:</div>

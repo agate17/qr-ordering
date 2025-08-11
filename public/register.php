@@ -58,6 +58,10 @@ foreach ($orders as $order) {
     $tables[$order['table_id']][] = $order;
 }
 
+// Get tables with orders for filter display
+$tables_with_orders = array_keys($tables);
+sort($tables_with_orders);
+
 // Get menu items grouped by category for ordering interface
 $categories = [];
 $uncategorized = [];
@@ -72,28 +76,21 @@ foreach ($menu as $item) {
 
 // Get available tables
 $table_list = get_table_list();
+$max_tables = get_table_count();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Orders & Payments</title>
+    <title>Kases logs</title>
     <link rel="stylesheet" type="text/css" href="assets/css/register.css?v=<?php echo time(); ?>">
+    <!-- Bootstrap Icons CDN for filter icon -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>
 <div class="container">
-    <div class="header">
-        <div class="header-content">
-            <div class="header-text">
-                <h1>💰 Kase</h1>
-                <div class="subtitle">Pasūtījumu un maksājumu pārvaldība</div>
-            </div>
-            <button id="fullscreenBtn" class="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
-                <span id="fullscreenIcon">⛶</span>
-            </button>
-        </div>
-    </div>
+    
     
     <?php if ($order_success): ?>
         <div class="feedback success"><?php echo htmlspecialchars($order_success); ?></div>
@@ -107,6 +104,20 @@ $table_list = get_table_list();
         ➕ Izveidot jaunu pasūtījumu
     </button>
     
+    <!-- Table Filter -->
+    <div class="table-filter" id="tableFilter">
+        <button class="filter-btn active" onclick="filterByTable('all')" id="filter-all">
+            Visi
+        </button>
+        <?php for ($i = 1; $i <= $max_tables; $i++): ?>
+            <?php if (in_array($i, $tables_with_orders)): ?>
+                <button class="filter-btn" onclick="filterByTable(<?php echo $i; ?>)" id="filter-<?php echo $i; ?>">
+                    <?php echo $i; ?>
+                </button>
+            <?php endif; ?>
+        <?php endfor; ?>
+    </div>
+    
     <div class="content">
         <?php if (empty($orders)): ?>
             <div class="empty-state">
@@ -116,7 +127,7 @@ $table_list = get_table_list();
             </div>
         <?php else: ?>
             <?php foreach ($tables as $table_id => $table_orders): ?>
-                <div class="table-section">
+                <div class="table-section" data-table-id="<?php echo $table_id; ?>">
                     <div class="table-header">
                         <div class="table-number">Galds <?php echo $table_id; ?></div>
                         <?php 
@@ -212,20 +223,25 @@ $table_list = get_table_list();
                         <div class="item-description"><?php echo htmlspecialchars($item['description']); ?></div>
                         <div class="item-price">€<?php echo number_format($item['price'], 2); ?></div>
                         
-                        <div class="quantity-controls">
-                            <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
-                            <input type="number" 
-                                   class="quantity-input" 
-                                   name="qty[<?php echo $item['id']; ?>]" 
-                                   id="qty_<?php echo $item['id']; ?>"
-                                   min="0" 
-                                   max="10" 
-                                   value="0"
-                                   onchange="updateOrderSummary()">
-                            <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                        <div class="item-controls">
+                            <div class="quantity-controls">
+                                <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
+                                <input type="number" 
+                                       class="quantity-input" 
+                                       name="qty[<?php echo $item['id']; ?>]" 
+                                       id="qty_<?php echo $item['id']; ?>"
+                                       min="0" 
+                                       max="10" 
+                                       value="0"
+                                       onchange="updateOrderSummary()">
+                                <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                            </div>
+                            <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
+                                Pielāgot
+                            </button>
                         </div>
                         
-                        <!-- Hidden customization fields (simplified for register) -->
+                        <!-- Hidden customization fields -->
                         <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
                     </div>
                     <?php endforeach; ?>
@@ -242,17 +258,22 @@ $table_list = get_table_list();
                         <div class="item-description"><?php echo htmlspecialchars($item['description']); ?></div>
                         <div class="item-price">€<?php echo number_format($item['price'], 2); ?></div>
                         
-                        <div class="quantity-controls">
-                            <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
-                            <input type="number" 
-                                   class="quantity-input" 
-                                   name="qty[<?php echo $item['id']; ?>]" 
-                                   id="qty_<?php echo $item['id']; ?>"
-                                   min="0" 
-                                   max="10" 
-                                   value="0"
-                                   onchange="updateOrderSummary()">
-                            <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                        <div class="item-controls">
+                            <div class="quantity-controls">
+                                <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, -1)">-</button>
+                                <input type="number" 
+                                       class="quantity-input" 
+                                       name="qty[<?php echo $item['id']; ?>]" 
+                                       id="qty_<?php echo $item['id']; ?>"
+                                       min="0" 
+                                       max="10" 
+                                       value="0"
+                                       onchange="updateOrderSummary()">
+                                <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
+                            </div>
+                            <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
+                                Pielāgot
+                            </button>
                         </div>
                         
                         <!-- Hidden customization fields -->
@@ -275,13 +296,41 @@ $table_list = get_table_list();
     </div>
 </div>
 
+<!-- Customization Modal (same as in menu.php) -->
+<div class="modal-overlay" id="customizeModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Pielāgo savu ēdienu:</h3>
+            <button class="close-btn" onclick="closeCustomize()">&times;</button>
+        </div>
+
+        <div class="customization-section">
+            <div class="section-title">Īpašas prasības:</div>
+            <div class="special-requests">
+                <textarea id="specialRequests" name="special_requests" placeholder="īpaši norādījumi, sastāvdaļu izņemšana vai papildu pieprasījumi..."></textarea>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="modal-btn cancel-btn" onclick="closeCustomize()">Atcelt</button>
+            <button type="button" class="modal-btn save-btn" onclick="saveCustomizations()">Saglabāt pielāgojumus</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // Menu data for JavaScript
 const menuData = <?php echo json_encode($menu); ?>;
+const maxTables = <?php echo $max_tables; ?>;
 
 // AJAX polling variables
 let pollInterval;
 let isModalOpen = false;
+let currentTableFilter = 'all'; // Track current filter
+
+// Customization variables (added from menu.php)
+let currentItemId = null;
+let customizations = {};
 
 // Helper functions (DEFINE THESE FIRST)
 function escapeHtml(text) {
@@ -333,6 +382,142 @@ function formatCustomizations(customizations) {
     return result.join('<br>');
 }
 
+// Customization functions (added from menu.php)
+function openCustomize(itemId, itemName) {
+    currentItemId = itemId;
+    document.getElementById('modalTitle').textContent = `Pielāgo: ${itemName}`;
+    
+    // Load existing customizations if any
+    if (customizations[itemId]) {
+        loadCustomizations(itemId);
+    } else {
+        // Reset form
+        document.querySelectorAll('#customizeModal input[type="checkbox"]').forEach(cb => cb.checked = false);
+        document.getElementById('specialRequests').value = '';
+    }
+    
+    // Show modal
+    document.getElementById('customizeModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCustomize() {
+    document.getElementById('customizeModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+    currentItemId = null;
+}
+
+function loadCustomizations(itemId) {
+    const itemCustomizations = customizations[itemId];
+    
+    // Load allergies
+    if (itemCustomizations.allergies) {
+        itemCustomizations.allergies.forEach(allergy => {
+            const checkbox = document.getElementById(`allergy_${allergy}`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+    
+    // Load removed ingredients
+    if (itemCustomizations.remove_ingredients) {
+        itemCustomizations.remove_ingredients.forEach(ingredient => {
+            const checkbox = document.getElementById(`remove_${ingredient}`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+    
+    // Load special requests
+    if (itemCustomizations.special_requests) {
+        document.getElementById('specialRequests').value = itemCustomizations.special_requests;
+    }
+}
+
+function saveCustomizations() {
+    if (!currentItemId) return;
+    
+    const allergies = [];
+    const removeIngredients = [];
+    
+    // Collect allergies
+    document.querySelectorAll('#customizeModal input[name="allergies[]"]:checked').forEach(cb => {
+        allergies.push(cb.value);
+    });
+    
+    // Collect removed ingredients
+    document.querySelectorAll('#customizeModal input[name="remove_ingredients[]"]:checked').forEach(cb => {
+        removeIngredients.push(cb.value);
+    });
+    
+    // Get special requests
+    const specialRequests = document.getElementById('specialRequests').value.trim();
+    
+    // Save customizations
+    customizations[currentItemId] = {
+        allergies: allergies,
+        remove_ingredients: removeIngredients,
+        special_requests: specialRequests
+    };
+    
+    // Update hidden field
+    document.getElementById(`custom_${currentItemId}`).value = JSON.stringify(customizations[currentItemId]);
+    
+    // Update customize button appearance
+    const customizeBtn = document.getElementById(`customize_${currentItemId}`);
+    if (allergies.length > 0 || removeIngredients.length > 0 || specialRequests) {
+        customizeBtn.classList.add('has-customizations');
+        customizeBtn.textContent = 'Pielāgots ✓';
+    } else {
+        customizeBtn.classList.remove('has-customizations');
+        customizeBtn.textContent = 'Pielāgot';
+    }
+    
+    // Update order summary
+    updateOrderSummary();
+    
+    // Close modal
+    closeCustomize();
+}
+
+// Table filter functions
+function filterByTable(tableId) {
+    currentTableFilter = tableId;
+    
+    // Update button states
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.getElementById('filter-' + tableId).classList.add('active');
+    
+    // Show/hide table sections
+    const tableSections = document.querySelectorAll('.table-section');
+    const emptyState = document.querySelector('.empty-state');
+    
+    if (tableId === 'all') {
+        // Show all tables
+        tableSections.forEach(section => {
+            section.style.display = 'block';
+        });
+        if (emptyState) emptyState.style.display = tableSections.length === 0 ? 'block' : 'none';
+    } else {
+        // Show only specific table
+        let hasVisibleTable = false;
+        tableSections.forEach(section => {
+            const sectionTableId = section.getAttribute('data-table-id');
+            if (sectionTableId == tableId) {
+                section.style.display = 'block';
+                hasVisibleTable = true;
+            } else {
+                section.style.display = 'none';
+            }
+        });
+        
+        // Show empty state if no orders for this table
+        if (emptyState) {
+            emptyState.style.display = hasVisibleTable ? 'none' : 'block';
+        }
+    }
+}
+
 // UPDATED modal functions
 function openOrderModal() {
     document.getElementById('orderModal').classList.add('active');
@@ -346,6 +531,12 @@ function closeOrderModal() {
     document.body.style.overflow = 'auto';
     // Reset form
     document.getElementById('newOrderForm').reset();
+    // Reset customizations
+    customizations = {};
+    document.querySelectorAll('.customize-btn').forEach(btn => {
+        btn.classList.remove('has-customizations');
+        btn.textContent = 'Pielāgot';
+    });
     updateOrderSummary();
     isModalOpen = false;
     startPolling(); // Resume polling when modal is closed
@@ -361,11 +552,40 @@ async function fetchOrderData() {
         const data = await response.json();
         if (data.success) {
             updateOrdersDisplay(data);
+            updateTableFilter(data.orders);
         }
     } catch (error) {
         console.error('Error fetching orders:', error);
         // Don't auto-reload - just log the error for now
         console.log('AJAX failed - check if get_orders.php exists and works');
+    }
+}
+
+// Update table filter based on current orders
+function updateTableFilter(orders) {
+    // Get tables that have unpaid orders
+    const tablesWithUnpaidOrders = [...new Set(orders.map(order => order.table_id))].sort((a, b) => a - b);
+    
+    // Only add buttons for tables with orders, don't remove existing ones
+    tablesWithUnpaidOrders.forEach(tableId => {
+        const btn = document.getElementById('filter-' + tableId);
+        if (!btn) {
+            // Create button if it doesn't exist
+            const newBtn = document.createElement('button');
+            newBtn.className = 'filter-btn';
+            newBtn.id = 'filter-' + tableId;
+            newBtn.textContent = tableId;
+            newBtn.onclick = () => filterByTable(tableId);
+            document.getElementById('tableFilter').appendChild(newBtn);
+        }
+    });
+    
+    // Only switch away from current filter if that table truly has no orders visible
+    if (currentTableFilter !== 'all') {
+        const currentTableSection = document.querySelector(`.table-section[data-table-id="${currentTableFilter}"]`);
+        if (!currentTableSection || currentTableSection.style.display === 'none') {
+            filterByTable('all');
+        }
     }
 }
 
@@ -383,8 +603,16 @@ function updateOrdersDisplay(data) {
                 </div>
             </div>
         `;
+        // Remove all table filter buttons except "All" when no orders
+        document.querySelectorAll('.filter-btn:not(#filter-all)').forEach(btn => btn.remove());
+        filterByTable('all');
         return;
     }
+    
+    // Get current table IDs before updating DOM
+    const currentTableIds = Array.from(document.querySelectorAll('.table-section')).map(section => 
+        parseInt(section.getAttribute('data-table-id'))
+    );
     
     // Group orders by table
     const tables = {};
@@ -393,13 +621,15 @@ function updateOrdersDisplay(data) {
         tables[order.table_id].push(order);
     });
     
+    const newTableIds = Object.keys(tables).map(id => parseInt(id));
+    
     let html = '';
-    Object.keys(tables).forEach(tableId => {
+    Object.keys(tables).sort((a, b) => parseInt(a) - parseInt(b)).forEach(tableId => {
         const tableOrders = tables[tableId];
         const tableTotal = tableOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
         
         html += `
-            <div class="table-section">
+            <div class="table-section" data-table-id="${tableId}">
                 <div class="table-header">
                     <div class="table-number">Galds ${tableId}</div>
                     <div class="table-total">Kopā: €${tableTotal.toFixed(2)}</div>
@@ -415,6 +645,25 @@ function updateOrdersDisplay(data) {
     });
     
     contentDiv.innerHTML = html;
+    
+    // Remove filter buttons for tables that no longer exist
+    currentTableIds.forEach(tableId => {
+        if (!newTableIds.includes(tableId)) {
+            const btn = document.getElementById('filter-' + tableId);
+            if (btn) {
+                btn.remove();
+                // If we were filtering by this table, switch to all
+                if (currentTableFilter == tableId) {
+                    filterByTable('all');
+                }
+            }
+        }
+    });
+    
+    // Apply current filter after updating content
+    if (currentTableFilter !== 'all') {
+        filterByTable(currentTableFilter);
+    }
 }
 
 // Generate HTML for individual order card
@@ -467,19 +716,6 @@ function generateOrderCardHTML(order, menuItems) {
     `;
 }
 
-// Helper functions
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function formatTime(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
-}
-
 // Polling control
 function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
@@ -526,9 +762,15 @@ function updateOrderSummary() {
                 const itemTotal = quantity * parseFloat(menuItem.price);
                 total += itemTotal;
                 
+                // Add customization info if exists
+                let customizationInfo = '';
+                if (customizations[itemId] && Object.keys(customizations[itemId]).length > 0) {
+                    customizationInfo = '<br><small style="color: #e67e22;">✓ Pielāgots</small>';
+                }
+                
                 summaryHTML += `
                     <div class="summary-item">
-                        <span>${menuItem.name} x ${quantity}</span>
+                        <span>${menuItem.name} x ${quantity}${customizationInfo}</span>
                         <span>€${itemTotal.toFixed(2)}</span>
                     </div>
                 `;
@@ -582,10 +824,27 @@ document.addEventListener('fullscreenchange', function() {
     }
 });
 
-// Close modal when clicking outside
+// Close modal when clicking outside (for both modals)
 document.getElementById('orderModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeOrderModal();
+    }
+});
+
+document.getElementById('customizeModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCustomize();
+    }
+});
+
+// Close modal with Escape key (for both modals)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if (document.getElementById('customizeModal').classList.contains('active')) {
+            closeCustomize();
+        } else if (document.getElementById('orderModal').classList.contains('active')) {
+            closeOrderModal();
+        }
     }
 });
 
@@ -618,68 +877,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-<style>
-.header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 20px;
-    border-radius: 15px;
-    margin: 30px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
-
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.header-text {
-    flex: 1;
-}
-
-.fullscreen-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 18px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.fullscreen-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.05);
-}
-
-.fullscreen-btn:active {
-    transform: scale(0.95);
-}
-
-/* Fullscreen adjustments */
-:fullscreen .container {
-    max-width: none;
-    padding: 20px;
-}
-
-:fullscreen .header {
-    margin-bottom: 20px;
-}
-
-/* Make modal work well in fullscreen */
-:fullscreen .order-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-}
-</style>
-
 </body>
 </html>

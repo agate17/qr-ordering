@@ -39,61 +39,50 @@ $kitchen_orders = array_filter($orders, function($o) {
     <div class="header">
         <div class="header-content">
             <div class="header-text">
-                <h1>🍳 Pasūtījumi</h1>
-                <div class="subtitle">Ienākošie pasūtījumi no klientiem</div>
+                <h1>🍳 Pasūtījumi 🍳</h1>
             </div>
-            <button id="fullscreenBtn" class="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
-                <span id="fullscreenIcon">⛶</span>
-            </button>
         </div>
     </div>
     
-    <?php if (empty($kitchen_orders)): ?>
-        <div class="empty">
-            <div class="empty-icon">🍽️</div>
-            <div>Pašlaik nav pasūtījumu.</div>
-            <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">Pasūtījumi šeit parādīsies automātiski.</div>
-        </div>
-    <?php else: ?>
-        <?php foreach ($kitchen_orders as $order): ?>
-            <div class="order" style="background:
-                <?php if ($order['status'] === 'pending') echo '#fffbe6';
-                elseif ($order['status'] === 'preparing') echo '#e6f7ff';
-                else echo '#fff'; ?>;">
-                <div class="order-header">
-                    <div class="order-info">
-                        <div class="table-number">Galds <?php echo $order['table_id']; ?></div>
-                        <div class="order-time"><?php echo date('H:i', strtotime($order['created_at'])); ?></div>
-                        <span class="status-badge status-<?php echo $order['status']; ?>" style="margin-left:10px; padding: 6px 12px; border-radius: 15px; font-weight: 600; font-size: 0.95em; text-transform: uppercase; letter-spacing: 1px; background: <?php
-                             if ($order['status'] === 'pending') echo '#fff3cd; color: #856404; border: 1px solid #ffeaa7;';
-                             elseif ($order['status'] === 'preparing') echo '#d1ecf1; color: #0c5460; border: 1px solid #bee5eb;';
-                             else echo '#d4edda; color: #155724; border: 1px solid #c3e6cb;';
-                         ?>">
-                             <?php echo ucfirst($order['status']); ?>
-                         </span>
+    <div class="content">
+        <?php if (empty($kitchen_orders)): ?>
+            <div class="empty-state">
+                <div class="empty-icon">🍽️</div>
+                <div>Pašlaik nav pasūtījumu.</div>
+                <div style="font-size: 0.9em; margin-top: 10px; color: #9ca3af;">Pasūtījumi šeit parādīsies automātiski.</div>
+            </div>
+        <?php else: ?>
+            <?php foreach ($kitchen_orders as $order): ?>
+                <div class="order-card">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="table-number">Galds <?php echo $order['table_id']; ?></div>
+                            <div class="order-time"><?php echo date('H:i', strtotime($order['created_at'])); ?></div>
+                            <div class="status-badge status-<?php echo $order['status']; ?>">
+                                <?php echo ucfirst($order['status']); ?>
+                            </div>
+                        </div>
+                        <form method="post" action="kitchen.php" style="margin:0;">
+                            <?php if ($order['status'] === 'pending'): ?>
+                                <input type="hidden" name="mark_preparing" value="<?php echo $order['id']; ?>">
+                                <button class="action-btn preparing-btn" type="submit">🍳 Atzīmēt kā gatavojas</button>
+                            <?php elseif ($order['status'] === 'preparing'): ?>
+                                <input type="hidden" name="mark_prepared" value="<?php echo $order['id']; ?>">
+                                <button class="action-btn prepared-btn" type="submit">✅ Atzīmēt kā sagatavotu</button>
+                            <?php else: ?>
+                                <button class="action-btn" type="button" disabled>✔ Gatavs</button>
+                            <?php endif; ?>
+                        </form>
                     </div>
-                    <form method="post" action="kitchen.php" style="margin:0;">
-                        <?php if ($order['status'] === 'pending'): ?>
-                            <input type="hidden" name="mark_preparing" value="<?php echo $order['id']; ?>">
-                            <button class="btn" type="submit">🍳 Atzīmēt kā gatavojas</button>
-                        <?php elseif ($order['status'] === 'preparing'): ?>
-                            <input type="hidden" name="mark_prepared" value="<?php echo $order['id']; ?>">
-                            <button class="btn" type="submit">✅ Atzīmēt kā sagatavotu</button>
-                        <?php else: ?>
-                            <button class="btn" type="button" disabled>✔ Gatavs</button>
-                        <?php endif; ?>
-                    </form>
-                </div>
-                
-                <div class="order-items">
-                    <?php 
-                    $items = get_order_items($order['id']);
-                    foreach ($items as $item): 
-                        $menuItem = $menu[$item['menu_item_id']];
-                        $customizationDisplay = format_customizations(isset($item['customizations']) ? $item['customizations'] : '');
-                    ?>
-                        <div class="order-item">
-                            <div class="item-header">
+                    
+                    <div class="order-items">
+                        <?php 
+                        $items = get_order_items($order['id']);
+                        foreach ($items as $item): 
+                            $menuItem = $menu[$item['menu_item_id']];
+                            $customizationDisplay = format_customizations(isset($item['customizations']) ? $item['customizations'] : '');
+                        ?>
+                            <div class="item-row">
                                 <div class="item-name"><?php echo htmlspecialchars($menuItem['name']); ?></div>
                                 <div class="item-quantity">x<?php echo $item['quantity']; ?></div>
                             </div>
@@ -103,12 +92,12 @@ $kitchen_orders = array_filter($orders, function($o) {
                                     <?php echo $customizationDisplay; ?>
                                 </div>
                             <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
-            </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 <script>
@@ -118,14 +107,14 @@ function toggleFullscreen() {
     
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().then(() => {
-            icon.textContent = '⛷'; // Exit fullscreen icon
+            icon.textContent = '⛷';
             btn.title = 'Exit Fullscreen';
         }).catch(err => {
             console.error('Error attempting to enable fullscreen:', err);
         });
     } else {
         document.exitFullscreen().then(() => {
-            icon.textContent = '⛶'; // Enter fullscreen icon
+            icon.textContent = '⛶';
             btn.title = 'Toggle Fullscreen';
         }).catch(err => {
             console.error('Error attempting to exit fullscreen:', err);
@@ -133,7 +122,7 @@ function toggleFullscreen() {
     }
 }
 
-// Listen for fullscreen changes (e.g., when user presses ESC)
+// Listen for fullscreen changes
 document.addEventListener('fullscreenchange', function() {
     const icon = document.getElementById('fullscreenIcon');
     const btn = document.getElementById('fullscreenBtn');
@@ -149,13 +138,35 @@ document.addEventListener('fullscreenchange', function() {
 </script>
 
 <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #111827;
+    min-height: 100vh;
+    padding: 20px 0;
+    color: #f9fafb;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: #1f2937;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    border: 1px solid #374151;
+}
+
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     color: white;
-    padding: 20px;
-    border-radius: 15px;
-    margin-bottom: 30px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    padding: 30px;
+    border-bottom: 1px solid #374151;
 }
 
 .header-content {
@@ -168,9 +179,23 @@ document.addEventListener('fullscreenchange', function() {
     flex: 1;
 }
 
+.header h1 {
+    font-size: 2.5em;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    color: #f9fafb;
+}
+
+.header .subtitle {
+    font-size: 1.1em;
+    opacity: 0.8;
+    color: #d1d5db;
+}
+
 .fullscreen-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(55, 65, 81, 0.5);
+    border: 2px solid rgba(107, 114, 128, 0.3);
     color: white;
     padding: 10px 15px;
     border-radius: 8px;
@@ -181,8 +206,8 @@ document.addEventListener('fullscreenchange', function() {
 }
 
 .fullscreen-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(75, 85, 99, 0.7);
+    border-color: rgba(156, 163, 175, 0.5);
     transform: scale(1.05);
 }
 
@@ -190,14 +215,248 @@ document.addEventListener('fullscreenchange', function() {
     transform: scale(0.95);
 }
 
+.content {
+    padding: 30px;
+    background: #1f2937;
+}
+
+.order-card {
+    background: #111827;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 1px solid #374151;
+    transition: all 0.3s ease;
+}
+
+.order-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+    border-color: #4b5563;
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #374151;
+}
+
+.order-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.table-number {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 1.2em;
+}
+
+.order-time {
+    color: #9ca3af;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.status-pending {
+    background: #fbbf24;
+    color: #92400e;
+}
+
+.status-preparing {
+    background: #60a5fa;
+    color: #1e40af;
+}
+
+.status-prepared {
+    background: #34d399;
+    color: #047857;
+}
+
+.order-items {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #1f2937;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #f9fafb;
+    font-size: 1.1em;
+}
+
+.item-quantity {
+    background: #3b82f6;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.customizations {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: #d1d5db;
+}
+
+.customizations:empty {
+    display: none;
+}
+
+.customizations strong {
+    color: #fbbf24;
+}
+
+.action-btn {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #047857, #065f46);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(5, 150, 105, 0.4);
+}
+
+.preparing-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.preparing-btn:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+}
+
+.prepared-btn {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.prepared-btn:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.action-btn:disabled {
+    background: #6b7280;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+.empty-state {
+    text-align: center;
+    color: #9ca3af;
+    margin: 60px 0;
+    font-size: 1.2em;
+}
+
+.empty-icon {
+    font-size: 3em;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
 /* Fullscreen adjustments */
 :fullscreen .container {
     max-width: none;
     padding: 20px;
+    margin: 0;
+    height: 100vh;
+    border-radius: 0;
 }
 
 :fullscreen .header {
-    margin-bottom: 20px;
+    margin-bottom: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        margin: 10px;
+        border-radius: 12px;
+    }
+    
+    .header {
+        padding: 20px;
+    }
+    
+    .header h1 {
+        font-size: 2em;
+    }
+    
+    .content {
+        padding: 20px;
+    }
+    
+    .order-card {
+        padding: 20px;
+    }
+    
+    .order-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .order-info {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .item-row {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .action-btn {
+        width: 100%;
+    }
 }
 </style>
 

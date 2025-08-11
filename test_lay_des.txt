@@ -1,0 +1,374 @@
+import React, { useState, useEffect } from 'react';
+import { Clock, Filter, Bell, ChefHat, Calculator, Wine, Coffee, Utensils, Plus, X, Check } from 'lucide-react';
+
+const RestaurantDemo = () => {
+  const [activeView, setActiveView] = useState('register');
+  const [showNewOrderPopup, setShowNewOrderPopup] = useState(false);
+  const [tableFilter, setTableFilter] = useState('all');
+  const [orders, setOrders] = useState([
+    {
+      id: 1,
+      table: 5,
+      items: [
+        { name: 'Burger', category: 'food', customizations: ['No onions', 'Extra cheese'] },
+        { name: 'Coke', category: 'cold_drink' }
+      ],
+      status: 'new',
+      time: '14:25',
+      total: 12.50,
+      isNew: true
+    },
+    {
+      id: 2,
+      table: 3,
+      items: [
+        { name: 'Pizza Margherita', category: 'food', customizations: ['Thin crust', 'Extra basil'] },
+        { name: 'Beer', category: 'alcoholic', requiresID: true }
+      ],
+      status: 'preparing',
+      time: '14:15',
+      total: 18.90,
+      isNew: false
+    },
+    {
+      id: 3,
+      table: 7,
+      items: [
+        { name: 'Caesar Salad', category: 'food' },
+        { name: 'Wine Glass', category: 'alcoholic', requiresID: true }
+      ],
+      status: 'ready',
+      time: '14:10',
+      total: 15.30,
+      isNew: false
+    }
+  ]);
+
+  const [showCustomization, setShowCustomization] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  // Simulate new order notification
+  useEffect(() => {
+    if (activeView === 'kitchen') {
+      const timer = setTimeout(() => {
+        setShowNewOrderPopup(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeView]);
+
+  const menuItems = [
+    { name: 'Burger', category: 'food', price: 8.50, customizable: true },
+    { name: 'Pizza', category: 'food', price: 12.00, customizable: true },
+    { name: 'Coke', category: 'cold_drink', price: 2.50 },
+    { name: 'Coffee', category: 'hot_drink', price: 3.00 },
+    { name: 'Beer', category: 'alcoholic', price: 4.50, viewOnly: true },
+    { name: 'Wine', category: 'alcoholic', price: 6.00, viewOnly: true }
+  ];
+
+  const getOrdersByCategory = (category) => {
+    if (category === 'kitchen') {
+      return orders.filter(order => 
+        order.items.some(item => ['food', 'hot_drink'].includes(item.category))
+      );
+    }
+    return orders;
+  };
+
+  const getFilteredTables = () => {
+    switch (tableFilter) {
+      case 'active':
+        return orders.filter(order => order.status !== 'completed');
+      case 'new':
+        return orders.filter(order => order.status === 'new');
+      case 'ready':
+        return orders.filter(order => order.status === 'ready');
+      default:
+        return orders;
+    }
+  };
+
+  const acknowledgeOrder = (orderId) => {
+    setOrders(prev => prev.map(order => 
+      order.id === orderId ? { ...order, isNew: false } : order
+    ));
+  };
+
+  const CustomizationModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+      <div className="bg-gray-800 p-6 rounded-lg w-96 border border-gray-600">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">Customize {selectedItem?.name}</h3>
+          <button onClick={() => setShowCustomization(false)}>
+            <X className="w-5 h-5 text-gray-400 hover:text-white" />
+          </button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-300">Options:</label>
+            <div className="space-y-1">
+              <label className="flex items-center text-gray-300">
+                <input type="checkbox" className="mr-2" />
+                <span>Extra cheese (+€1.00)</span>
+              </label>
+              <label className="flex items-center text-gray-300">
+                <input type="checkbox" className="mr-2" />
+                <span>No onions</span>
+              </label>
+              <label className="flex items-center text-gray-300">
+                <input type="checkbox" className="mr-2" />
+                <span>Extra sauce (+€0.50)</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-300">Special Instructions:</label>
+            <textarea 
+              className="w-full p-2 border border-gray-600 bg-gray-700 text-white rounded"
+              placeholder="Any special requests..."
+              rows="3"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end space-x-2 mt-4">
+          <button 
+            onClick={() => setShowCustomization(false)}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => setShowCustomization(false)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded"
+          >
+            Add to Order
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const NewOrderPopup = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+      <div className="bg-gray-800 p-6 rounded-lg border border-gray-600">
+        <div className="text-center">
+          <Bell className="w-12 h-12 mx-auto mb-4 text-orange-400" />
+          <h2 className="text-xl font-bold mb-2 text-white">Jauns pasūtījums!</h2>
+          <p className="text-gray-300">Galdiņš #5 - Burger ar papildinājumiem</p>
+          <button 
+            onClick={() => setShowNewOrderPopup(false)}
+            className="mt-4 px-6 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded"
+          >
+            Apstiprināt
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-900">
+      {/* Navigation */}
+      <div className="bg-gray-800 shadow-sm border-b border-gray-700">
+        <div className="flex space-x-4 p-4">
+          <button
+            onClick={() => setActiveView('register')}
+            className={`flex items-center px-4 py-2 rounded ${
+              activeView === 'register' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            <Calculator className="w-4 h-4 mr-2" />
+            Register
+          </button>
+          <button
+            onClick={() => setActiveView('kitchen')}
+            className={`flex items-center px-4 py-2 rounded ${
+              activeView === 'kitchen' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            <ChefHat className="w-4 h-4 mr-2" />
+            Kitchen
+          </button>
+        </div>
+      </div>
+
+      {/* Register View */}
+      {activeView === 'register' && (
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Menu Section */}
+            <div className="bg-gray-800 rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-4 text-white">Menu</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {menuItems.map((item, index) => (
+                  <div 
+                    key={index}
+                    className={`p-3 border rounded cursor-pointer transition-all ${
+                      item.viewOnly ? 'bg-gray-700 border-gray-600 opacity-60 text-gray-400' : 'hover:bg-gray-700 border-gray-600 bg-gray-750 text-white hover:border-blue-500'
+                    }`}
+                    onClick={() => {
+                      if (item.viewOnly) return;
+                      if (item.customizable) {
+                        setSelectedItem(item);
+                        setShowCustomization(true);
+                      }
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium">{item.name}</h3>
+                        <p className="text-sm text-gray-400">€{item.price}</p>
+                        {item.viewOnly && (
+                          <div className="flex items-center mt-1">
+                            <Wine className="w-3 h-3 mr-1 text-red-500" />
+                            <span className="text-xs text-red-500">Bar only</span>
+                          </div>
+                        )}
+                        {item.customizable && !item.viewOnly && (
+                          <span className="text-xs text-blue-400">Customizable</span>
+                        )}
+                      </div>
+                      {!item.viewOnly && <Plus className="w-4 h-4 text-gray-500" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Orders Section */}
+            <div className="bg-gray-800 rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">Orders</h2>
+                <div className="flex items-center space-x-2">
+                  <Filter className="w-4 h-4 text-gray-400" />
+                  <select 
+                    value={tableFilter}
+                    onChange={(e) => setTableFilter(e.target.value)}
+                    className="border border-gray-600 bg-gray-700 text-white rounded px-2 py-1"
+                  >
+                    <option value="all">All Tables</option>
+                    <option value="active">Active Orders</option>
+                    <option value="new">New Orders</option>
+                    <option value="ready">Ready Orders</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {getFilteredTables().map((order) => (
+                  <div 
+                    key={order.id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                      order.isNew 
+                        ? 'border-orange-400 bg-orange-900 bg-opacity-30 animate-pulse shadow-lg text-white' 
+                        : 'border-gray-600 bg-gray-750 text-white hover:bg-gray-700'
+                    }`}
+                    onClick={() => acknowledgeOrder(order.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-medium">Table {order.table}</h3>
+                          {order.isNew && (
+                            <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-400 mt-1">
+                          {order.items.map((item, idx) => (
+                            <div key={idx} className="flex items-center space-x-1">
+                              <span>{item.name}</span>
+                              {item.customizations && (
+                                <span className="text-blue-400">
+                                  ({item.customizations.join(', ')})
+                                </span>
+                              )}
+                              {item.requiresID && (
+                                <span className="text-red-400 text-xs">[ID Required]</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">€{order.total}</p>
+                        <p className="text-sm text-gray-400">{order.time}</p>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          order.status === 'new' ? 'bg-orange-100 text-orange-800' :
+                          order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kitchen View */}
+      {activeView === 'kitchen' && (
+        <div className="p-6">
+          <div className="bg-gray-800 rounded-lg shadow p-6">
+            <div className="flex items-center space-x-2 mb-6">
+              <ChefHat className="w-6 h-6" />
+              <h2 className="text-xl font-bold text-white">Kitchen Orders</h2>
+              <span className="bg-green-800 text-green-200 text-sm px-2 py-1 rounded">
+                Food Items Only
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {getOrdersByCategory('kitchen').map((order) => (
+                <div key={order.id} className="border border-gray-600 bg-gray-750 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-lg text-white">Table {order.table}</h3>
+                    <span className="text-sm text-gray-400">{order.time}</span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {order.items
+                      .filter(item => ['food', 'hot_drink'].includes(item.category))
+                      .map((item, idx) => (
+                      <div key={idx} className="bg-gray-700 p-2 rounded">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-white">{item.name}</span>
+                          <Utensils className="w-4 h-4 text-gray-400" />
+                        </div>
+                        {item.customizations && (
+                          <div className="text-sm text-blue-400 mt-1">
+                            • {item.customizations.join(' • ')}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-between mt-4">
+                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm">
+                      Start Cooking
+                    </button>
+                    <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm">
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      {showCustomization && <CustomizationModal />}
+      {showNewOrderPopup && <NewOrderPopup />}
+    </div>
+  );
+};
+
+export default RestaurantDemo;
