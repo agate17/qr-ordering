@@ -359,9 +359,9 @@ $max_tables = get_table_count();
         align-items: center;
         margin-bottom: 15px;
         padding: 15px;
-        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        background: linear-gradient(135deg, #2c3e50, #404041ff);
         border-radius: 12px;
-        border: 2px solid #dee2e6;
+        border: 2px solid #0ed9f4ff;
     }
 
     .table-info {
