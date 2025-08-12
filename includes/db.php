@@ -407,3 +407,38 @@ function get_drink_items($order_id, $menu_items) {
     
     return $drink_items;
 }
+
+/**
+ * Get all unpaid orders for a specific table
+ * @param int $table_id The table ID
+ * @return array Array of unpaid orders for the table
+ */
+function get_table_unpaid_orders($table_id) {
+    $conn = db_connect();
+    global $ORDERS;
+    
+    if ($conn) {
+        $table_id_escaped = intval($table_id);
+        $sql = "SELECT id, table_id, status, created_at 
+                FROM orders 
+                WHERE table_id = $table_id_escaped AND status != 'paid' 
+                ORDER BY created_at ASC";
+        
+        $result = $conn->query($sql);
+        $orders = [];
+        
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $orders[] = $row;
+            }
+        }
+        
+        $conn->close();
+        return $orders;
+    }
+    
+    // Fallback for no database - use global ORDERS array
+    return array_filter($ORDERS, function($order) use ($table_id) {
+        return $order['table_id'] == $table_id && $order['status'] !== 'paid';
+    });
+}

@@ -50,6 +50,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_register_order
     exit;
 }
 
+// Handle mark entire table as paid
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_table_paid'])) {
+    $table_id = intval($_POST['mark_table_paid']);
+    
+    // Get all unpaid orders for this table
+    $unpaid_orders = get_table_unpaid_orders($table_id);
+    
+    if (!empty($unpaid_orders)) {
+        // Mark all orders as paid
+        $updated_count = 0;
+        foreach ($unpaid_orders as $order) {
+            if (update_order_status($order['id'], 'paid')) {
+                $updated_count++;
+            }
+        }
+        
+        if ($updated_count > 0) {
+            $_SESSION['order_success'] = "Galds $table_id - $updated_count pasūtījumi atzīmēti kā apmaksāti";
+        } else {
+            $_SESSION['order_error'] = "Neizdevās atzīmēt pasūtījumus kā apmaksātus";
+        }
+    } else {
+        $_SESSION['order_error'] = "Nav neapmaksātu pasūtījumu galdam $table_id";
+    }
+    
+    header('Location: register.php');
+    exit;
+}
+
+// Start session AFTER handling POST requests
 session_start();
 $order_success = isset($_SESSION['order_success']) ? $_SESSION['order_success'] : '';
 $order_error = isset($_SESSION['order_error']) ? $_SESSION['order_error'] : '';
@@ -61,10 +91,15 @@ $orders = array_filter($orders, function($order) {
 });
 $menu = get_menu_items();
 
-// Group orders by table
+// Group orders by table and calculate table totals
 $tables = [];
+$table_totals = [];
 foreach ($orders as $order) {
     $tables[$order['table_id']][] = $order;
+    if (!isset($table_totals[$order['table_id']])) {
+        $table_totals[$order['table_id']] = 0;
+    }
+    $table_totals[$order['table_id']] += get_order_total($order['id']);
 }
 
 // Get tables with orders for filter display
@@ -297,6 +332,55 @@ $max_tables = get_table_count();
             box-shadow: 0 0 20px rgba(243, 156, 18, 0.4);
         }
     }
+
+    /* Table pay button styles */
+    .table-pay-btn {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .table-pay-btn:hover {
+        background: linear-gradient(135deg, #229954, #27ae60);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 15px;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-radius: 12px;
+        border: 2px solid #dee2e6;
+    }
+
+    .table-info {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .table-number {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    .table-total {
+        font-size: 1.2em;
+        color: #27ae60;
+        font-weight: bold;
+    }
     </style>
 </head>
 <body>
@@ -362,17 +446,25 @@ $max_tables = get_table_count();
                         break;
                     }
                 }
+                $tableTotal = $table_totals[$table_id];
                 ?>
                 <div class="table-section <?php echo $hasNewOrders ? 'has-new-orders' : ''; ?>" data-table-id="<?php echo $table_id; ?>">
                     <div class="table-header">
-                        <div class="table-number">Galds <?php echo $table_id; ?></div>
-                        <?php 
-                        $tableTotal = 0;
-                        foreach ($table_orders as $order) {
-                            $tableTotal += get_order_total($order['id']);
-                        }
-                        ?>
-                        <div class="table-total">Kopā: €<?php echo number_format($tableTotal, 2); ?></div>
+                        <div class="table-info">
+                            <div class="table-number">Galds <?php echo $table_id; ?></div>
+                            <div class="table-total">Kopā: €<?php echo number_format($tableTotal, 2); ?></div>
+                        </div>
+                        
+                        <div class="table-actions">
+                            <!-- Mark entire table as paid button -->
+                            <form method="post" action="register.php" style="margin:0; display: inline;" 
+                                onsubmit="return confirm('Vai tiešām vēlaties atzīmēt visus galds <?php echo $table_id; ?> pasūtījumus kā apmaksātus?\n\nKopsumma: €<?php echo number_format($tableTotal, 2); ?>')">
+                                <input type="hidden" name="mark_table_paid" value="<?php echo $table_id; ?>">
+                                <button class="table-pay-btn" type="submit" title="Atzīmēt visu galdu kā apmaksātu">
+                                    💰 Apmaksāt galdu (€<?php echo number_format($tableTotal, 2); ?>)
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     
                     <div class="orders-grid">
@@ -900,6 +992,103 @@ function closeOrderModal() {
     fetchOrderData(); // Immediate update when closing modal
 }
 
+// UPDATED updateOrdersDisplay function with proper table total calculation
+function updateOrdersDisplay(data) {
+    const contentDiv = document.querySelector('.content');
+    
+    if (!data.orders || data.orders.length === 0) {
+        contentDiv.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💳</div>
+                <div>Vēl nav pasūtījumu.</div>
+                <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">
+                    Pasūtījumi tiks parādīti šeit, kad klienti tos veiks.
+                </div>
+            </div>
+        `;
+        // Remove all table filter buttons except "All" when no orders
+        document.querySelectorAll('.filter-btn:not(#filter-all)').forEach(btn => btn.remove());
+        filterByTable('all');
+        return;
+    }
+    
+    // Get current table IDs before updating DOM
+    const currentTableIds = Array.from(document.querySelectorAll('.table-section')).map(section => 
+        parseInt(section.getAttribute('data-table-id'))
+    );
+    
+    // Group orders by table and calculate table totals
+    const tables = {};
+    const tableTotals = {};
+    data.orders.forEach(order => {
+        if (!tables[order.table_id]) {
+            tables[order.table_id] = [];
+            tableTotals[order.table_id] = 0;
+        }
+        tables[order.table_id].push(order);
+        tableTotals[order.table_id] += parseFloat(order.total || 0);
+    });
+    
+    const newTableIds = Object.keys(tables).map(id => parseInt(id));
+    
+    let html = '';
+    Object.keys(tables).sort((a, b) => parseInt(a) - parseInt(b)).forEach(tableId => {
+        const tableOrders = tables[tableId];
+        const tableTotal = tableTotals[tableId];
+        
+        // Check if table has new orders for register
+        const hasNewOrders = tableOrders.some(order => order.is_new_register == 1);
+        
+        html += `
+            <div class="table-section ${hasNewOrders ? 'has-new-orders' : ''}" data-table-id="${tableId}">
+                <div class="table-header">
+                    <div class="table-info">
+                        <div class="table-number">Galds ${tableId}</div>
+                        <div class="table-total">Kopā: €${tableTotal.toFixed(2)}</div>
+                    </div>
+                    
+                    <div class="table-actions">
+                        <form method="post" action="register.php" style="margin:0; display: inline;" 
+                              onsubmit="return confirm('Vai tiešām vēlaties atzīmēt visus galds ${tableId} pasūtījumus kā apmaksātus?\\n\\nKopsumma: €${tableTotal.toFixed(2)}')">
+                            <input type="hidden" name="mark_table_paid" value="${tableId}">
+                            <button class="table-pay-btn" type="submit" title="Atzīmēt visu galdu kā apmaksātu">
+                                💰 Apmaksāt galdu (€${tableTotal.toFixed(2)})
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="orders-grid">
+        `;
+        
+        tableOrders.forEach(order => {
+            html += generateOrderCardHTML(order, data.menu);
+        });
+        
+        html += '</div></div>';
+    });
+    
+    contentDiv.innerHTML = html;
+    
+    // Remove filter buttons for tables that no longer exist
+    currentTableIds.forEach(tableId => {
+        if (!newTableIds.includes(tableId)) {
+            const btn = document.getElementById('filter-' + tableId);
+            if (btn) {
+                btn.remove();
+                // If we were filtering by this table, switch to all
+                if (currentTableFilter == tableId) {
+                    filterByTable('all');
+                }
+            }
+        }
+    });
+    
+    // Apply current filter after updating content
+    if (currentTableFilter !== 'all') {
+        filterByTable(currentTableFilter);
+    }
+}
+
 // Fetch fresh order data via AJAX
 async function fetchOrderData() {
     try {
@@ -915,8 +1104,6 @@ async function fetchOrderData() {
         }
     } catch (error) {
         console.error('Error fetching orders:', error);
-        // Don't auto-reload - just log the error for now
-        console.log('AJAX failed - check if get_orders.php exists and works');
     }
 }
 
@@ -973,86 +1160,6 @@ function updateTableFilter(orders) {
         if (!currentTableSection || currentTableSection.style.display === 'none') {
             filterByTable('all');
         }
-    }
-}
-
-// Update the orders display without full page reload
-function updateOrdersDisplay(data) {
-    const contentDiv = document.querySelector('.content');
-    
-    if (!data.orders || data.orders.length === 0) {
-        contentDiv.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">💳</div>
-                <div>Vēl nav pasūtījumu.</div>
-                <div style="font-size: 0.9em; margin-top: 10px; color: #95a5a6;">
-                    Pasūtījumi tiks parādīti šeit, kad klienti tos veiks.
-                </div>
-            </div>
-        `;
-        // Remove all table filter buttons except "All" when no orders
-        document.querySelectorAll('.filter-btn:not(#filter-all)').forEach(btn => btn.remove());
-        filterByTable('all');
-        return;
-    }
-    
-    // Get current table IDs before updating DOM
-    const currentTableIds = Array.from(document.querySelectorAll('.table-section')).map(section => 
-        parseInt(section.getAttribute('data-table-id'))
-    );
-    
-    // Group orders by table
-    const tables = {};
-    data.orders.forEach(order => {
-        if (!tables[order.table_id]) tables[order.table_id] = [];
-        tables[order.table_id].push(order);
-    });
-    
-    const newTableIds = Object.keys(tables).map(id => parseInt(id));
-    
-    let html = '';
-    Object.keys(tables).sort((a, b) => parseInt(a) - parseInt(b)).forEach(tableId => {
-        const tableOrders = tables[tableId];
-        const tableTotal = tableOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-        
-        // Check if table has new orders for register
-        const hasNewOrders = tableOrders.some(order => order.is_new_register == 1);
-        
-        html += `
-            <div class="table-section ${hasNewOrders ? 'has-new-orders' : ''}" data-table-id="${tableId}">
-                <div class="table-header">
-                    <div class="table-number">Galds ${tableId}</div>
-                    <div class="table-total">Kopā: €${tableTotal.toFixed(2)}</div>
-                </div>
-                <div class="orders-grid">
-        `;
-        
-        tableOrders.forEach(order => {
-            html += generateOrderCardHTML(order, data.menu);
-        });
-        
-        html += '</div></div>';
-    });
-    
-    contentDiv.innerHTML = html;
-    
-    // Remove filter buttons for tables that no longer exist
-    currentTableIds.forEach(tableId => {
-        if (!newTableIds.includes(tableId)) {
-            const btn = document.getElementById('filter-' + tableId);
-            if (btn) {
-                btn.remove();
-                // If we were filtering by this table, switch to all
-                if (currentTableFilter == tableId) {
-                    filterByTable('all');
-                }
-            }
-        }
-    });
-    
-    // Apply current filter after updating content
-    if (currentTableFilter !== 'all') {
-        filterByTable(currentTableFilter);
     }
 }
 
@@ -1186,41 +1293,6 @@ function updateOrderSummary() {
         submitBtn.disabled = true;
     }
 }
-
-function toggleFullscreen() {
-    const btn = document.getElementById('fullscreenBtn');
-    const icon = document.getElementById('fullscreenIcon');
-    
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().then(() => {
-            icon.textContent = '⛷';
-            btn.title = 'Exit Fullscreen';
-        }).catch(err => {
-            console.error('Error attempting to enable fullscreen:', err);
-        });
-    } else {
-        document.exitFullscreen().then(() => {
-            icon.textContent = '⛶';
-            btn.title = 'Toggle Fullscreen';
-        }).catch(err => {
-            console.error('Error attempting to exit fullscreen:', err);
-        });
-    }
-}
-
-// Listen for fullscreen changes
-document.addEventListener('fullscreenchange', function() {
-    const icon = document.getElementById('fullscreenIcon');
-    const btn = document.getElementById('fullscreenBtn');
-    
-    if (document.fullscreenElement) {
-        icon.textContent = '⛷';
-        btn.title = 'Exit Fullscreen';
-    } else {
-        icon.textContent = '⛶';
-        btn.title = 'Toggle Fullscreen';
-    }
-});
 
 // Close modal when clicking outside (for both modals)
 document.getElementById('orderModal').addEventListener('click', function(e) {
