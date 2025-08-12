@@ -9,6 +9,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_paid'])) {
     exit;
 }
 
+// Handle acknowledge order for register (separate from kitchen)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acknowledge_register_order'])) {
+    $oid = intval($_POST['acknowledge_register_order']);
+    acknowledge_register_order($oid);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // Handle new order creation from register
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_register_order'])) {
     $table_id = isset($_POST['table_id']) ? intval($_POST['table_id']) : 0;
@@ -87,10 +96,228 @@ $max_tables = get_table_count();
     <link rel="stylesheet" type="text/css" href="assets/css/register.css?v=<?php echo time(); ?>">
     <!-- Bootstrap Icons CDN for filter icon -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+    /* New Order Notification Styles */
+    .new-order-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        display: none;
+        z-index: 1000;
+        animation: slideInFromRight 0.5s ease-out;
+        min-width: 300px;
+        border-left: 4px solid #d35400;
+    }
+
+    .new-order-notification.show {
+        display: block;
+    }
+
+    .new-order-notification .notification-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .new-order-notification .notification-icon {
+        font-size: 24px;
+        animation: pulse 2s infinite;
+    }
+
+    .new-order-notification .notification-text h4 {
+        margin: 0 0 5px 0;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .new-order-notification .notification-text p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .new-order-notification .close-notification {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .new-order-notification .close-notification:hover {
+        opacity: 1;
+    }
+
+    @keyframes slideInFromRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+
+    /* Enhanced order card styles for new orders */
+    .order-card.new-order {
+        border: 2px solid #f39c12;
+        background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(230, 126, 34, 0.05));
+        animation: newOrderGlow 2s infinite;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .order-card.new-order::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(45deg, #f39c12, #e67e22, #d35400);
+        border-radius: inherit;
+        z-index: -1;
+        animation: borderRotate 3s linear infinite;
+    }
+
+    @keyframes newOrderGlow {
+        0%, 100% {
+            box-shadow: 0 0 15px rgba(243, 156, 18, 0.3);
+        }
+        50% {
+            box-shadow: 0 0 25px rgba(243, 156, 18, 0.6);
+        }
+    }
+
+    @keyframes borderRotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .new-order-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #e74c3c;
+        color: white;
+        font-size: 10px;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: bold;
+        animation: pulse 2s infinite;
+        z-index: 10;
+    }
+
+    /* Sound notification toggle */
+    .sound-toggle {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        transition: all 0.3s ease;
+        z-index: 999;
+    }
+
+    .sound-toggle:hover {
+        background: #2980b9;
+        transform: scale(1.1);
+    }
+
+    .sound-toggle.muted {
+        background: #95a5a6;
+    }
+
+    .sound-toggle.muted:hover {
+        background: #7f8c8d;
+    }
+
+    /* Acknowledge button styles */
+    .acknowledge-btn {
+        background: #27ae60;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        margin-left: 10px;
+        transition: all 0.2s;
+    }
+
+    .acknowledge-btn:hover {
+        background: #229954;
+        transform: translateY(-1px);
+    }
+
+    /* Order item customization display enhancement */
+    .customizations {
+        background: rgba(52, 152, 219, 0.1);
+        padding: 8px;
+        border-radius: 6px;
+        margin-top: 5px;
+        border-left: 3px solid #3498db;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    /* Table section enhancements for new orders */
+    .table-section.has-new-orders {
+        animation: tableGlow 3s infinite;
+    }
+
+    @keyframes tableGlow {
+        0%, 100% {
+            box-shadow: 0 0 10px rgba(243, 156, 18, 0.2);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.4);
+        }
+    }
+    </style>
 </head>
 <body>
 <div class="container">
     
+    <!-- New Order Notification -->
+    <div class="new-order-notification" id="newOrderNotification">
+        <button class="close-notification" onclick="closeNotification()">&times;</button>
+        <div class="notification-content">
+            <div class="notification-icon">🔔</div>
+            <div class="notification-text">
+                <h4 id="notificationTitle">Jauns pasūtījums!</h4>
+                <p id="notificationMessage">Galds #X - Jauns pasūtījums saņemts</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sound Toggle Button -->
+    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle notification sounds">
+        🔊
+    </button>
     
     <?php if ($order_success): ?>
         <div class="feedback success"><?php echo htmlspecialchars($order_success); ?></div>
@@ -127,7 +354,16 @@ $max_tables = get_table_count();
             </div>
         <?php else: ?>
             <?php foreach ($tables as $table_id => $table_orders): ?>
-                <div class="table-section" data-table-id="<?php echo $table_id; ?>">
+                <?php 
+                $hasNewOrders = false;
+                foreach ($table_orders as $order) {
+                    if (isset($order['is_new_register']) && $order['is_new_register'] == 1) {
+                        $hasNewOrders = true;
+                        break;
+                    }
+                }
+                ?>
+                <div class="table-section <?php echo $hasNewOrders ? 'has-new-orders' : ''; ?>" data-table-id="<?php echo $table_id; ?>">
                     <div class="table-header">
                         <div class="table-number">Galds <?php echo $table_id; ?></div>
                         <?php 
@@ -141,7 +377,11 @@ $max_tables = get_table_count();
                     
                     <div class="orders-grid">
                         <?php foreach ($table_orders as $order): ?>
-                            <div class="order-card">
+                            <div class="order-card <?php echo (isset($order['is_new_register']) && $order['is_new_register'] == 1) ? 'new-order' : ''; ?>" data-order-id="<?php echo $order['id']; ?>">
+                                <?php if (isset($order['is_new_register']) && $order['is_new_register'] == 1): ?>
+                                    <div class="new-order-badge">JAUNS</div>
+                                <?php endif; ?>
+                                
                                 <div class="order-header">
                                     <div class="order-info">
                                         <div class="order-id">Order #<?php echo $order['id']; ?></div>
@@ -149,12 +389,18 @@ $max_tables = get_table_count();
                                         <div class="status-badge status-<?php echo $order['status']; ?>"><?php echo $order['status']; ?></div>
                                     </div>
                                     
-                                    <?php if ($order['status'] !== 'paid'): ?>
-                                        <form method="post" action="register.php" style="margin:0;">
-                                            <input type="hidden" name="mark_paid" value="<?php echo $order['id']; ?>">
-                                            <button class="action-btn" type="submit">💰 Atzīmēt kā apmaksātu</button>
-                                        </form>
-                                    <?php endif; ?>
+                                    <div class="order-actions">
+                                        <?php if (isset($order['is_new_register']) && $order['is_new_register'] == 1): ?>
+                                            <button class="acknowledge-btn" onclick="acknowledgeRegisterOrder(<?php echo $order['id']; ?>)">✓ Apskatīts</button>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($order['status'] !== 'paid'): ?>
+                                            <form method="post" action="register.php" style="margin:0; display: inline;">
+                                                <input type="hidden" name="mark_paid" value="<?php echo $order['id']; ?>">
+                                                <button class="action-btn" type="submit">💰 Atzīmēt kā apmaksātu</button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 
                                 <div class="order-items">
@@ -327,10 +573,121 @@ const maxTables = <?php echo $max_tables; ?>;
 let pollInterval;
 let isModalOpen = false;
 let currentTableFilter = 'all'; // Track current filter
+let soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default to true
+let lastOrderIds = new Set(); // Track order IDs to detect new ones
 
 // Customization variables (added from menu.php)
 let currentItemId = null;
 let customizations = {};
+
+// Sound and notification functions
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem('soundEnabled', soundEnabled);
+    updateSoundButton();
+}
+
+function updateSoundButton() {
+    const button = document.getElementById('soundToggle');
+    if (soundEnabled) {
+        button.textContent = '🔊';
+        button.classList.remove('muted');
+        button.title = 'Disable notification sounds';
+    } else {
+        button.textContent = '🔇';
+        button.classList.add('muted');
+        button.title = 'Enable notification sounds';
+    }
+}
+
+function playNotificationSound() {
+    if (!soundEnabled) return;
+    
+    // Create and play a simple notification sound
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Create two tones for a pleasant notification sound
+    const playTone = (frequency, duration, delay = 0) => {
+        setTimeout(() => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }, delay);
+    };
+    
+    playTone(800, 0.2, 0);
+    playTone(1000, 0.2, 150);
+}
+
+function showNewOrderNotification(tableId, orderId) {
+    const notification = document.getElementById('newOrderNotification');
+    const title = document.getElementById('notificationTitle');
+    const message = document.getElementById('notificationMessage');
+    
+    title.textContent = 'Jauns pasūtījums!';
+    message.textContent = `Galds #${tableId} - Pasūtījums #${orderId}`;
+    
+    notification.classList.add('show');
+    
+    // Play sound
+    playNotificationSound();
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        closeNotification();
+    }, 5000);
+}
+
+function closeNotification() {
+    const notification = document.getElementById('newOrderNotification');
+    notification.classList.remove('show');
+}
+
+function acknowledgeRegisterOrder(orderId) {
+    // Send AJAX request to acknowledge the order for register
+    fetch('register.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `acknowledge_register_order=${orderId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove new order styling immediately
+            const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+            if (orderCard) {
+                orderCard.classList.remove('new-order');
+                const badge = orderCard.querySelector('.new-order-badge');
+                if (badge) badge.remove();
+                const ackBtn = orderCard.querySelector('.acknowledge-btn');
+                if (ackBtn) ackBtn.remove();
+                
+                // Remove table glow if no more new orders in this table
+                const tableSection = orderCard.closest('.table-section');
+                const remainingNewOrders = tableSection.querySelectorAll('.order-card.new-order');
+                if (remainingNewOrders.length === 0) {
+                    tableSection.classList.remove('has-new-orders');
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error acknowledging register order:', error);
+    });
+}
 
 // Helper functions (DEFINE THESE FIRST)
 function escapeHtml(text) {
@@ -551,6 +908,8 @@ async function fetchOrderData() {
         
         const data = await response.json();
         if (data.success) {
+            // Check for new orders before updating display
+            checkForNewOrders(data.orders);
             updateOrdersDisplay(data);
             updateTableFilter(data.orders);
         }
@@ -559,6 +918,34 @@ async function fetchOrderData() {
         // Don't auto-reload - just log the error for now
         console.log('AJAX failed - check if get_orders.php exists and works');
     }
+}
+
+// Check for new orders and show notifications
+function checkForNewOrders(orders) {
+    const currentOrderIds = new Set();
+    
+    orders.forEach(order => {
+        currentOrderIds.add(order.id);
+        
+        // Check if this is a truly new order (not in our previous set and marked as new for register)
+        if (!lastOrderIds.has(order.id) && order.is_new_register == 1) {
+            // Show notification for new order
+            showNewOrderNotification(order.table_id, order.id);
+        }
+    });
+    
+    // Update our tracking set
+    lastOrderIds = currentOrderIds;
+}
+
+// Initialize order tracking on first load
+function initializeOrderTracking() {
+    // Get current order IDs to initialize tracking
+    const currentOrders = document.querySelectorAll('[data-order-id]');
+    currentOrders.forEach(orderElement => {
+        const orderId = parseInt(orderElement.getAttribute('data-order-id'));
+        lastOrderIds.add(orderId);
+    });
 }
 
 // Update table filter based on current orders
@@ -628,8 +1015,11 @@ function updateOrdersDisplay(data) {
         const tableOrders = tables[tableId];
         const tableTotal = tableOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
         
+        // Check if table has new orders for register
+        const hasNewOrders = tableOrders.some(order => order.is_new_register == 1);
+        
         html += `
-            <div class="table-section" data-table-id="${tableId}">
+            <div class="table-section ${hasNewOrders ? 'has-new-orders' : ''}" data-table-id="${tableId}">
                 <div class="table-header">
                     <div class="table-number">Galds ${tableId}</div>
                     <div class="table-total">Kopā: €${tableTotal.toFixed(2)}</div>
@@ -692,20 +1082,28 @@ function generateOrderCardHTML(order, menuItems) {
         }
     });
     
+    const isNewOrder = order.is_new_register == 1;
+    const newOrderBadge = isNewOrder ? '<div class="new-order-badge">JAUNS</div>' : '';
+    const acknowledgeButton = isNewOrder ? `<button class="acknowledge-btn" onclick="acknowledgeRegisterOrder(${order.id})">✓ Apskatīts</button>` : '';
+    
     return `
-        <div class="order-card">
+        <div class="order-card ${isNewOrder ? 'new-order' : ''}" data-order-id="${order.id}">
+            ${newOrderBadge}
             <div class="order-header">
                 <div class="order-info">
                     <div class="order-id">Order #${order.id}</div>
                     <div class="order-time">${formatTime(order.created_at)}</div>
                     <div class="status-badge status-${order.status}">${order.status}</div>
                 </div>
-                ${order.status !== 'paid' ? `
-                    <form method="post" action="register.php" style="margin:0;">
-                        <input type="hidden" name="mark_paid" value="${order.id}">
-                        <button class="action-btn" type="submit">💰 Atzīmēt kā apmaksātu</button>
-                    </form>
-                ` : ''}
+                <div class="order-actions">
+                    ${acknowledgeButton}
+                    ${order.status !== 'paid' ? `
+                        <form method="post" action="register.php" style="margin:0; display: inline;">
+                            <input type="hidden" name="mark_paid" value="${order.id}">
+                            <button class="action-btn" type="submit">💰 Atzīmēt kā apmaksātu</button>
+                        </form>
+                    ` : ''}
+                </div>
             </div>
             <div class="order-items">${itemsHTML}</div>
             <div class="order-total">
@@ -844,6 +1242,8 @@ document.addEventListener('keydown', function(e) {
             closeCustomize();
         } else if (document.getElementById('orderModal').classList.contains('active')) {
             closeOrderModal();
+        } else if (document.getElementById('newOrderNotification').classList.contains('show')) {
+            closeNotification();
         }
     }
 });
@@ -851,6 +1251,8 @@ document.addEventListener('keydown', function(e) {
 // UPDATED Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     updateOrderSummary();
+    updateSoundButton();
+    initializeOrderTracking(); // Initialize order tracking
     
     // Auto-dismiss feedback messages
     const feedbacks = document.querySelectorAll('.feedback');

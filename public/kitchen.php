@@ -1,13 +1,24 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
 
+// Handle acknowledge new order for KITCHEN ONLY
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acknowledge_kitchen_order'])) {
+    $oid = intval($_POST['acknowledge_kitchen_order']);
+    acknowledge_kitchen_order($oid);
+    header('Location: kitchen.php');
+    exit;
+}
+
 // Handle mark as preparing
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_preparing'])) {
     $oid = intval($_POST['mark_preparing']);
     update_order_status($oid, 'preparing');
+    // Also acknowledge the kitchen order when starting to prepare
+    acknowledge_kitchen_order($oid);
     header('Location: kitchen.php');
     exit;
 }
+
 // Handle mark as prepared
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_prepared'])) {
     $oid = intval($_POST['mark_prepared']);
@@ -23,11 +34,25 @@ $kitchen_orders = array_filter($orders, function($o) {
     return in_array($o['status'], ['pending', 'preparing']);
 });
 
-
 // Filter orders to only show those with kitchen-relevant items
 $filtered_kitchen_orders = array_filter($kitchen_orders, function($order) use ($menu) {
     return has_kitchen_items($order['id'], $menu);
 });
+
+// Check for new orders to show popup - FIXED LOGIC
+$has_new_orders = false;
+$new_order_details = null;
+foreach ($filtered_kitchen_orders as $order) {
+    // Check for is_new_kitchen field (not is_new)
+    if (isset($order['is_new_kitchen']) && $order['is_new_kitchen'] == 1) {
+        $has_new_orders = true;
+        if (!$new_order_details) { // Get details of first new order for popup
+            $new_order_details = $order;
+            $new_order_details['kitchen_items'] = get_kitchen_items($order['id'], $menu);
+        }
+        break;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -67,27 +92,43 @@ $filtered_kitchen_orders = array_filter($kitchen_orders, function($order) use ($
                 $kitchen_items = get_kitchen_items($order['id'], $menu);
                 // Skip orders with no kitchen items (shouldn't happen due to filtering, but safety check)
                 if (empty($kitchen_items)) continue;
+                
+                // FIXED: Check for is_new_kitchen field
+                $isNewOrder = isset($order['is_new_kitchen']) && $order['is_new_kitchen'] == 1;
                 ?>
-                <div class="order-card">
+                <div class="order-card <?php echo $isNewOrder ? 'new-order' : ''; ?>">
                     <div class="order-header">
                         <div class="order-info">
                             <div class="table-number">Galds <?php echo $order['table_id']; ?></div>
                             <div class="order-time"><?php echo date('H:i', strtotime($order['created_at'])); ?></div>
+                            <?php if ($isNewOrder): ?>
+                                <div class="new-order-badge">JAUNS!</div>
+                            <?php endif; ?>
                             <div class="status-badge status-<?php echo $order['status']; ?>">
                                 <?php echo ucfirst($order['status']); ?>
                             </div>
                         </div>
-                        <form method="post" action="kitchen.php" style="margin:0;">
-                            <?php if ($order['status'] === 'pending'): ?>
-                                <input type="hidden" name="mark_preparing" value="<?php echo $order['id']; ?>">
-                                <button class="action-btn preparing-btn" type="submit">🍳 Atzīmēt kā gatavojas</button>
-                            <?php elseif ($order['status'] === 'preparing'): ?>
-                                <input type="hidden" name="mark_prepared" value="<?php echo $order['id']; ?>">
-                                <button class="action-btn prepared-btn" type="submit">✅ Atzīmēt kā sagatavotu</button>
-                            <?php else: ?>
-                                <button class="action-btn" type="button" disabled>✔ Gatavs</button>
+                        <div class="action-buttons">
+                            <?php if ($isNewOrder): ?>
+                                <form method="post" action="kitchen.php" style="margin:0; display:inline;">
+                                    <!-- FIXED: Use kitchen-specific acknowledge -->
+                                    <input type="hidden" name="acknowledge_kitchen_order" value="<?php echo $order['id']; ?>">
+                                    <button class="action-btn acknowledge-btn" type="submit">👁️ Apstiprināt</button>
+                                </form>
                             <?php endif; ?>
-                        </form>
+                            
+                            <form method="post" action="kitchen.php" style="margin:0; display:inline;">
+                                <?php if ($order['status'] === 'pending'): ?>
+                                    <input type="hidden" name="mark_preparing" value="<?php echo $order['id']; ?>">
+                                    <button class="action-btn preparing-btn" type="submit">🍳 Atzīmēt kā gatavojas</button>
+                                <?php elseif ($order['status'] === 'preparing'): ?>
+                                    <input type="hidden" name="mark_prepared" value="<?php echo $order['id']; ?>">
+                                    <button class="action-btn prepared-btn" type="submit">✅ Atzīmēt kā sagatavotu</button>
+                                <?php else: ?>
+                                    <button class="action-btn" type="button" disabled>✔ Gatavs</button>
+                                <?php endif; ?>
+                            </form>
+                        </div>
                     </div>
                     
                     <div class="order-items">
@@ -131,14 +172,37 @@ $filtered_kitchen_orders = array_filter($kitchen_orders, function($order) use ($
     </div>
 </div>
 
+<!-- New Order Popup Modal -->
+<?php if ($has_new_orders && $new_order_details): ?>
+<div class="new-order-popup" id="newOrderPopup">
+    <div class="popup-content">
+        <div class="popup-icon">🔔</div>
+        <h2>Jauns pasūtījums!</h2>
+        <div class="popup-details">
+            <div class="popup-table">Galds #<?php echo $new_order_details['table_id']; ?></div>
+            <div class="popup-items">
+                <?php foreach ($new_order_details['kitchen_items'] as $item): ?>
+                    <div><?php echo htmlspecialchars($menu[$item['menu_item_id']]['name']); ?> x<?php echo $item['quantity']; ?></div>
+                <?php endforeach; ?>
+            </div>
+            <div class="popup-time"><?php echo date('H:i', strtotime($new_order_details['created_at'])); ?></div>
+        </div>
+        <button class="popup-acknowledge-btn" onclick="acknowledgePopup(<?php echo $new_order_details['id']; ?>)">
+            Apstiprināt pasūtījumu
+        </button>
+    </div>
+</div>
+<?php endif; ?>
+
 <script>
 // Auto-refresh every 10 seconds, but with better UX
 let refreshTimer;
+let popupShown = <?php echo $has_new_orders ? 'true' : 'false'; ?>;
 
 function startAutoRefresh() {
     refreshTimer = setTimeout(function() {
         // Only refresh if no modals are open and user isn't interacting
-        if (!document.querySelector('.order-card:hover')) {
+        if (!document.querySelector('.order-card:hover') && !popupShown) {
             location.reload();
         } else {
             // Try again in 2 seconds if user is interacting
@@ -153,6 +217,49 @@ function stopAutoRefresh() {
     }
 }
 
+// Handle new order popup - FIXED to use kitchen-specific acknowledge
+function acknowledgePopup(orderId) {
+    // Submit kitchen acknowledge form
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = 'kitchen.php';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'acknowledge_kitchen_order'; // FIXED: Use kitchen-specific field
+    input.value = orderId;
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Close popup when clicking outside
+document.addEventListener('click', function(e) {
+    const popup = document.getElementById('newOrderPopup');
+    if (popup && e.target === popup) {
+        popup.style.display = 'none';
+        popupShown = false;
+        startAutoRefresh();
+    }
+});
+
+// Show popup on page load if there are new orders
+document.addEventListener('DOMContentLoaded', function() {
+    const popup = document.getElementById('newOrderPopup');
+    if (popup) {
+        popup.style.display = 'flex';
+        // Auto-close popup after 30 seconds if not acknowledged
+        setTimeout(function() {
+            if (popup.style.display !== 'none') {
+                popup.style.display = 'none';
+                popupShown = false;
+                startAutoRefresh();
+            }
+        }, 30000);
+    }
+});
+
 // Pause refresh when user is hovering over cards
 document.addEventListener('DOMContentLoaded', function() {
     const orderCards = document.querySelectorAll('.order-card');
@@ -162,8 +269,10 @@ document.addEventListener('DOMContentLoaded', function() {
         card.addEventListener('mouseleave', startAutoRefresh);
     });
     
-    // Start the refresh timer
-    startAutoRefresh();
+    // Start the refresh timer only if no popup is shown
+    if (!popupShown) {
+        startAutoRefresh();
+    }
 });
 
 function toggleFullscreen() {
@@ -301,6 +410,53 @@ body {
     border-color: #4b5563;
 }
 
+/* NEW ORDER STYLING */
+.order-card.new-order {
+    border: 2px solid #f59e0b;
+    background: linear-gradient(135deg, #111827 0%, #1a1a2e 100%);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+    animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+    0% {
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        border-color: #f59e0b;
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+        border-color: #fbbf24;
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        border-color: #f59e0b;
+    }
+}
+
+.new-order-badge {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #92400e;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-weight: 700;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-3px);
+    }
+    60% {
+        transform: translateY(-2px);
+    }
+}
+
 .order-header {
     display: flex;
     justify-content: space-between;
@@ -314,6 +470,13 @@ body {
     display: flex;
     align-items: center;
     gap: 20px;
+    flex-wrap: wrap;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 .table-number {
@@ -434,9 +597,9 @@ body {
     background: linear-gradient(135deg, #059669, #047857);
     color: white;
     border: none;
-    padding: 12px 24px;
+    padding: 12px 20px;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 0.9em;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -447,6 +610,16 @@ body {
     background: linear-gradient(135deg, #047857, #065f46);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(5, 150, 105, 0.4);
+}
+
+.acknowledge-btn {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.acknowledge-btn:hover {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
 }
 
 .preparing-btn {
@@ -488,6 +661,130 @@ body {
     font-size: 3em;
     margin-bottom: 20px;
     opacity: 0.5;
+}
+
+/* NEW ORDER POPUP STYLES */
+.new-order-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.popup-content {
+    background: linear-gradient(135deg, #1f2937, #111827);
+    border: 2px solid #f59e0b;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    color: white;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    animation: popupSlideIn 0.5s ease-out;
+}
+
+@keyframes popupSlideIn {
+    from {
+        transform: translateY(-50px) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.popup-icon {
+    font-size: 4em;
+    margin-bottom: 20px;
+    animation: bell 2s infinite;
+}
+
+@keyframes bell {
+    0%, 50%, 100% {
+        transform: rotate(0deg);
+    }
+    10%, 30% {
+        transform: rotate(-10deg);
+    }
+    20% {
+        transform: rotate(10deg);
+    }
+}
+
+.popup-content h2 {
+    font-size: 2em;
+    margin-bottom: 20px;
+    color: #fbbf24;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.popup-details {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.popup-table {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #3b82f6;
+    margin-bottom: 15px;
+}
+
+.popup-items {
+    color: #d1d5db;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.popup-items div {
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup-items div:last-child {
+    border-bottom: none;
+}
+
+.popup-time {
+    color: #9ca3af;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+.popup-acknowledge-btn {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #92400e;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+}
+
+.popup-acknowledge-btn:hover {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(245, 158, 11, 0.4);
+}
+
+.popup-acknowledge-btn:active {
+    transform: translateY(0);
 }
 
 /* Fullscreen adjustments */
@@ -538,18 +835,37 @@ body {
         align-items: flex-start;
     }
     
-    .item-row {
+    .action-buttons {
         flex-direction: column;
+        width: 100%;
         gap: 10px;
-        align-items: flex-start;
     }
     
     .action-btn {
         width: 100%;
     }
     
+    .item-row {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
     .item-category {
         font-size: 0.8em;
+    }
+    
+    .popup-content {
+        padding: 30px 20px;
+    }
+    
+    .popup-content h2 {
+        font-size: 1.5em;
+    }
+    
+    .popup-acknowledge-btn {
+        padding: 12px 25px;
+        font-size: 1em;
     }
 }
 </style>
