@@ -259,37 +259,6 @@ $max_tables = get_table_count();
         z-index: 10;
     }
 
-    /* Sound notification toggle */
-    .sound-toggle {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #3498db;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 60px;
-        height: 60px;
-        font-size: 20px;
-        cursor: pointer;
-        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-        transition: all 0.3s ease;
-        z-index: 999;
-    }
-
-    .sound-toggle:hover {
-        background: #2980b9;
-        transform: scale(1.1);
-    }
-
-    .sound-toggle.muted {
-        background: #95a5a6;
-    }
-
-    .sound-toggle.muted:hover {
-        background: #7f8c8d;
-    }
-
     /* Acknowledge button styles */
     .acknowledge-btn {
         background: #27ae60;
@@ -397,12 +366,6 @@ $max_tables = get_table_count();
             </div>
         </div>
     </div>
-
-    <!-- Sound Toggle Button -->
-    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle notification sounds">
-        🔊
-    </button>
-    
     <?php if ($order_success): ?>
         <div class="feedback success"><?php echo htmlspecialchars($order_success); ?></div>
     <?php endif; ?>
@@ -665,62 +628,13 @@ const maxTables = <?php echo $max_tables; ?>;
 let pollInterval;
 let isModalOpen = false;
 let currentTableFilter = 'all'; // Track current filter
-let soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default to true
 let lastOrderIds = new Set(); // Track order IDs to detect new ones
 
 // Customization variables (added from menu.php)
 let currentItemId = null;
 let customizations = {};
 
-// Sound and notification functions
-function toggleSound() {
-    soundEnabled = !soundEnabled;
-    localStorage.setItem('soundEnabled', soundEnabled);
-    updateSoundButton();
-}
 
-function updateSoundButton() {
-    const button = document.getElementById('soundToggle');
-    if (soundEnabled) {
-        button.textContent = '🔊';
-        button.classList.remove('muted');
-        button.title = 'Disable notification sounds';
-    } else {
-        button.textContent = '🔇';
-        button.classList.add('muted');
-        button.title = 'Enable notification sounds';
-    }
-}
-
-function playNotificationSound() {
-    if (!soundEnabled) return;
-    
-    // Create and play a simple notification sound
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // Create two tones for a pleasant notification sound
-    const playTone = (frequency, duration, delay = 0) => {
-        setTimeout(() => {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration);
-        }, delay);
-    };
-    
-    playTone(800, 0.2, 0);
-    playTone(1000, 0.2, 150);
-}
 
 function showNewOrderNotification(tableId, orderId) {
     const notification = document.getElementById('newOrderNotification');
@@ -731,9 +645,6 @@ function showNewOrderNotification(tableId, orderId) {
     message.textContent = `Galds #${tableId} - Pasūtījums #${orderId}`;
     
     notification.classList.add('show');
-    
-    // Play sound
-    playNotificationSound();
     
     // Auto-hide after 5 seconds
     setTimeout(() => {
@@ -1323,7 +1234,6 @@ document.addEventListener('keydown', function(e) {
 // UPDATED Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     updateOrderSummary();
-    updateSoundButton();
     initializeOrderTracking(); // Initialize order tracking
     
     // Auto-dismiss feedback messages

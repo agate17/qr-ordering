@@ -55,7 +55,7 @@ if ($order_id > 0) {
         
         <?php if (!empty($order_items) && !empty($menu_items)): ?>
         <div class="order-details-section">
-            <h3 style="margin-top: 0; color: #333; margin-bottom: 15px;">📋 Jūsu pasūtījums:</h3>
+            <h3 style="margin-top: 0; margin-bottom: 15px;">📋 Jūsu pasūtījums:</h3>
             
             <?php foreach ($order_items as $item): ?>
                 <?php 

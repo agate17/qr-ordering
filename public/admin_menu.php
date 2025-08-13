@@ -253,8 +253,111 @@ if ($conn && isset($_POST['update_settings'])) {
 
 // Get current settings
 $current_table_count = get_table_count();
-if ($conn) $conn->close();
+
+// Handle database cleanup operations
+if ($conn && isset($_POST['cleanup_action'])) {
+    $cleanup_type = $_POST['cleanup_type'] ?? '';
+    $confirmed = isset($_POST['confirm_cleanup']);
+    
+    if (!$confirmed) {
+        $feedback = 'Please confirm cleanup by checking the confirmation box.';
+        $feedback_type = 'error';
+    } else {
+        switch ($cleanup_type) {
+            case 'paid_orders':
+                // Delete paid orders and their items
+                $result = $conn->query("SELECT COUNT(*) as count FROM orders WHERE status = 'paid'");
+                $count = $result->fetch_assoc()['count'];
+                
+                if ($count > 0) {
+                    // Delete order items first (due to foreign key constraint)
+                    $conn->query("DELETE oi FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE o.status = 'paid'");
+                    // Delete orders
+                    $conn->query("DELETE FROM orders WHERE status = 'paid'");
+                    $feedback = "Deleted $count paid orders and their items.";
+                    $feedback_type = 'success';
+                } else {
+                    $feedback = 'No paid orders found to delete.';
+                    $feedback_type = 'success';
+                }
+                break;
+                
+            case 'old_orders':
+                $days = intval($_POST['days_old'] ?? 30);
+                $result = $conn->query("SELECT COUNT(*) as count FROM orders WHERE created_at < DATE_SUB(NOW(), INTERVAL $days DAY)");
+                $count = $result->fetch_assoc()['count'];
+                
+                if ($count > 0) {
+                    // Delete order items first
+                    $conn->query("DELETE oi FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE o.created_at < DATE_SUB(NOW(), INTERVAL $days DAY)");
+                    // Delete orders
+                    $conn->query("DELETE FROM orders WHERE created_at < DATE_SUB(NOW(), INTERVAL $days DAY)");
+                    $feedback = "Deleted $count orders older than $days days and their items.";
+                    $feedback_type = 'success';
+                } else {
+                    $feedback = "No orders older than $days days found.";
+                    $feedback_type = 'success';
+                }
+                break;
+                
+            case 'all_orders':
+                $result = $conn->query("SELECT COUNT(*) as count FROM orders");
+                $count = $result->fetch_assoc()['count'];
+                
+                if ($count > 0) {
+                    // Delete all order items first
+                    $conn->query("DELETE FROM order_items");
+                    // Delete all orders
+                    $conn->query("DELETE FROM orders");
+                    // Reset auto increment
+                    $conn->query("ALTER TABLE orders AUTO_INCREMENT = 1");
+                    $conn->query("ALTER TABLE order_items AUTO_INCREMENT = 1");
+                    $feedback = "Deleted all $count orders and their items. Database reset.";
+                    $feedback_type = 'success';
+                } else {
+                    $feedback = 'No orders found to delete.';
+                    $feedback_type = 'success';
+                }
+                break;
+                
+            default:
+                $feedback = 'Invalid cleanup type selected.';
+                $feedback_type = 'error';
+        }
+    }
+}
+
+// Get cleanup statistics
+$cleanup_stats = [];
+if ($conn) {
+    // Total orders
+    $result = $conn->query("SELECT COUNT(*) as count FROM orders");
+    $cleanup_stats['total_orders'] = $result->fetch_assoc()['count'];
+    
+    // Paid orders
+    $result = $conn->query("SELECT COUNT(*) as count FROM orders WHERE status = 'paid'");
+    $cleanup_stats['paid_orders'] = $result->fetch_assoc()['count'];
+    
+    // Orders older than 30 days
+    $result = $conn->query("SELECT COUNT(*) as count FROM orders WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+    $cleanup_stats['old_orders_30'] = $result->fetch_assoc()['count'];
+    
+    // Orders older than 7 days
+    $result = $conn->query("SELECT COUNT(*) as count FROM orders WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    $cleanup_stats['old_orders_7'] = $result->fetch_assoc()['count'];
+    
+    // Total order items
+    $result = $conn->query("SELECT COUNT(*) as count FROM order_items");
+    $cleanup_stats['total_order_items'] = $result->fetch_assoc()['count'];
+    
+    // Database size estimation (approximate)
+    $result = $conn->query("SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'DB Size (MB)' FROM information_schema.tables WHERE table_schema=DATABASE()");
+    $size_data = $result->fetch_assoc();
+    $cleanup_stats['db_size'] = $size_data['DB Size (MB)'] ?? 'Unknown';
+}
+
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -295,7 +398,7 @@ if ($conn) $conn->close();
             </table>
         <?php endif; ?>
     </div>
-    <!-- Add this section before the categories section -->
+    <!-- Restaurant Settings Section -->
     <div class="section">
         <h1>Restorāna iestatījumi</h1>
         <form method="post" class="form-row">
@@ -305,9 +408,11 @@ if ($conn) $conn->close();
             <button type="submit" name="update_settings">Saglabāt iestatījumus</button>
         </form>
         <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
-            Pašreiz ir <?php echo $current_table_count; ?> galdi. Mainot šo skaitu, automātiski tiks atjaunināti QR kodi un ēdienkaršu saites.
+            Pašreiz ir <?php echo $current_table_count; ?> galdi. Mainot šo skaitu, automātiski tiks atjaunināti QR kodi un ēdienkartes saites.
         </p>
     </div>
+    
+    <!-- Categories Section -->
     <div class="section">
         <h1>Pārvaldīt kategorijas</h1>
         <form method="post" class="form-row">
@@ -330,6 +435,7 @@ if ($conn) $conn->close();
             <?php endforeach; ?>
         </table>
     </div>
+    <!-- Menu Items Section -->
     <div class="section">
         <h1> Pārvaldīt ēdienkarti</h1>
         <button class="add-item-btn" onclick="openAddModal()">pievienot ēdienu</button>
@@ -341,7 +447,7 @@ if ($conn) $conn->close();
                     <label>nosaukums:
                         <input type="text" name="name" placeholder="ēdiena nosaukums" required>
                     </label>
-                    <label>apraksts (sastavdaļas):
+                    <label>apraksts (sastāvdaļas):
                         <textarea name="description" placeholder="Description"></textarea>
                     </label>
                     <label>Cena:
@@ -362,12 +468,6 @@ if ($conn) $conn->close();
                         izvēlies failu
                     </label>
                     <span class="file-name" id="modalFileName"></span>
-                    <!--
-                    <label>opcijas:
-                        <input type="text" name="options" placeholder="opcijas (piemēram- izmēri, asuma līmenis)">
-                    </label>
-                    -->
-
                     <label><input type="checkbox" name="available" checked> pieejams</label>
                     <div class="modal-actions">
                         <button type="button" onclick="closeAddModal()">atcelt</button>
@@ -418,11 +518,6 @@ if ($conn) $conn->close();
                                 <img src="<?php echo htmlspecialchars($item['image_path']); ?>" class="menu-thumb" alt="Image">
                             <?php endif; ?>
                         </div>
-                        <!--
-                        <div>
-                            <input type="text" name="options" value="<?php echo htmlspecialchars($item['options'] ?? ''); ?>" placeholder="opcijas" style="width:160px;">
-                        </div>
-                            -->
                         <div class="actions">
                             <button type="submit" name="edit_item">saglabāt</button>
                             <button type="submit" name="delete_item" onclick="return confirm('Delete this item?');">dzēst</button>
@@ -436,6 +531,86 @@ if ($conn) $conn->close();
             <tr><td colspan="6" style="text-align: center; padding: 20px;">ēdienkarte ir tukša. pievieno ēdienu lai veiktu darbības</td></tr>
             <?php endif; ?>
         </table>
+    </div>
+
+    <!-- Database Cleanup Section -->
+    <div class="section">
+        <h1>Datu bāzes tīrīšana</h1>
+        
+        <!-- Statistics -->
+        <div style="background: #f0f8ff; border: 1px solid #b8daff; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+            <div class="section-title" style="margin-bottom: 12px;">Datu bāzes statistika</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.95em;">
+                <div><strong>Kopā pasūtījumi:</strong> <?php echo $cleanup_stats['total_orders'] ?? 0; ?></div>
+                <div><strong>Apmaksāti pasūtījumi:</strong> <?php echo $cleanup_stats['paid_orders'] ?? 0; ?></div>
+                <div><strong>Vecāki par 7 dienām:</strong> <?php echo $cleanup_stats['old_orders_7'] ?? 0; ?></div>
+                <div><strong>Vecāki par 30 dienām:</strong> <?php echo $cleanup_stats['old_orders_30'] ?? 0; ?></div>
+                <div><strong>Kopā pasūtījuma pozīcijas:</strong> <?php echo $cleanup_stats['total_order_items'] ?? 0; ?></div>
+                <div><strong>DB izmērs (aptuveni):</strong> <?php echo $cleanup_stats['db_size'] ?? 'Unknown'; ?> MB</div>
+            </div>
+        </div>
+        
+        <!-- Cleanup Options -->
+        <form method="post" style="margin-bottom: 20px;">
+            <div style="background: #fff5f5; border: 1px solid #ffcccc; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
+                <div class="section-title" style="color: #c0392b; margin-bottom: 12px;">⚠️ Brīdinājums</div>
+                <p style="margin: 0; font-size: 0.95em; color: #666;">
+                    Datu dzēšana ir neatgriezeniska darbība. Pirms turpināšanas pārliecinieties, ka esat izveidojuši datu bāzes dublējumu.
+                    Dzēstie dati netiks saglabāti un tos nebūs iespējams atjaunot.
+                </p>
+            </div>
+            
+            <div class="form-row" style="align-items: flex-start; margin-bottom: 16px;">
+                <label style="min-width: 120px;">Tīrīšanas veids:</label>
+                <div style="flex: 1;">
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="cleanup_type" value="paid_orders" style="margin-right: 6px;" required>
+                            Dzēst tikai apmaksātos pasūtījumus (<?php echo $cleanup_stats['paid_orders'] ?? 0; ?> pasūtījumi)
+                        </label>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="cleanup_type" value="old_orders" style="margin-right: 6px;" required>
+                            Dzēst vecos pasūtījumus (vecāki par 
+                            <input type="number" name="days_old" value="30" min="1" max="365" style="width: 60px; margin: 0 4px;">
+                            dienām)
+                        </label>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: normal; cursor: pointer; color: #c0392b;">
+                            <input type="radio" name="cleanup_type" value="all_orders" style="margin-right: 6px;" required>
+                            <strong>Dzēst VISUS pasūtījumus (<?php echo $cleanup_stats['total_orders'] ?? 0; ?> pasūtījumi)</strong>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row" style="margin-bottom: 16px;">
+                <label style="display: flex; align-items: center; cursor: pointer; color: #c0392b; font-weight: 600;">
+                    <input type="checkbox" name="confirm_cleanup" style="margin-right: 8px;" required>
+                    Es apstiprinu, ka vēlos dzēst izvēlētos datus un apzinos, ka šī darbība ir neatgriezeniska
+                </label>
+            </div>
+            
+            <div class="form-row">
+                <button type="submit" name="cleanup_action" style="background: #e74c3c; color: #fff; padding: 10px 20px; font-weight: 600;" 
+                        onclick="return confirm('Vai esat pārliecināti, ka vēlaties turpināt datu dzēšanu? Šī darbība ir neatgriezeniska!');">
+                    Izpildīt datu tīrīšanu
+                </button>
+            </div>
+        </form>
+        
+        <!-- Additional Info -->
+        <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 14px; font-size: 0.9em; color: #666;">
+            <strong>Ieteikumi:</strong>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                <li>Regulāri dzēsiet apmaksātos pasūtījumus, lai uzturētu datu bāzi tīru</li>
+                <li>Saglabājiet vecus pasūtījumus 7-30 dienas grāmatvedības vajadzībām</li>
+                <li>Izveidojiet datu bāzes dublējumu pirms lieliem dzēšanas darbiem</li>
+                <li>Uzraugiet datu bāzes izmēru, lai izvairītos no veiktspējas problēmām</li>
+            </ul>
+        </div>
     </div>
 </div>
 <script>
@@ -492,4 +667,9 @@ function showTableFileName(input, id) {
 }
 </script>
 </body>
-</html> 
+</html>
+
+<?php
+// Close database connection at the very end
+if ($conn) $conn->close();
+?>

@@ -105,10 +105,6 @@ function is_alcoholic_item($category_name) {
 <div class="container">
     <div class="header">
         <h1>Galds <?php echo $table_id; ?></h1>
-        <div class="subtitle">Izvēlies kādu no gardajiem ēdieniem! <br>
-        <strong> !! Alkoholisko dzērienu iegādāšanas notiek tikai pie bāra !!
-        </strong>
-        </div>
     </div>
     
     <div class="menu-content">
