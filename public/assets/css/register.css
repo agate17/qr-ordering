@@ -53,28 +53,6 @@ body {
     color: #d1d5db;
 }
 
-.fullscreen-btn {
-    background: rgba(55, 65, 81, 0.5);
-    border: 2px solid rgba(107, 114, 128, 0.3);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 18px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.fullscreen-btn:hover {
-    background: rgba(75, 85, 99, 0.7);
-    border-color: rgba(156, 163, 175, 0.5);
-    transform: scale(1.05);
-}
-
-.fullscreen-btn:active {
-    transform: scale(0.95);
-}
-
 .content {
     padding: 30px;
     background: #1f2937;
@@ -107,15 +85,6 @@ body {
     padding: 25px;
     border: 1px solid #374151;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.table-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #374151;
 }
 
 .table-number {
@@ -654,99 +623,6 @@ body {
     border: 1px solid rgba(248, 113, 113, 0.3);
 }
 
-/* Fullscreen adjustments */
-:fullscreen .container {
-    max-width: none;
-    padding: 20px;
-    margin: 0;
-    height: 100vh;
-    border-radius: 0;
-}
-
-:fullscreen .header {
-    margin-bottom: 0;
-}
-
-:fullscreen .order-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .container {
-        margin: 10px;
-        border-radius: 12px;
-    }
-    
-    .header {
-        padding: 20px;
-    }
-    
-    .header h1 {
-        font-size: 2em;
-    }
-    
-    .content {
-        padding: 20px;
-    }
-    
-    .table-section {
-        padding: 20px;
-    }
-    
-    .table-header {
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
-    }
-    
-    .order-header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
-    }
-    
-    .order-info {
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
-    }
-    
-    .item-row {
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-    }
-    
-    .item-quantity {
-        margin: 0;
-    }
-    
-    .item-price {
-        text-align: left;
-        min-width: auto;
-    }
-    
-    .order-total {
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
-    }
-    
-    .action-btn {
-        width: 100%;
-    }
-    
-    .menu-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-
 /* Table Filter Styles */
 .table-filter {
     display: flex;
@@ -852,27 +728,6 @@ body {
     margin: 0;
     color: #f8f9fa;
     font-size: 1.4em;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: #95a5a6;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-    color: #e74c3c;
-    background: rgba(231, 76, 60, 0.1);
 }
 
 .customization-section {
@@ -993,64 +848,6 @@ body {
     box-shadow: 0 6px 18px rgba(230, 126, 34, 0.4);
 }
 
-/* Fullscreen adjustments */
-:fullscreen .container {
-    max-width: none;
-    padding: 20px;
-}
-
-:fullscreen .header {
-    margin-bottom: 20px;
-}
-
-:fullscreen .table-filter {
-    margin: 15px 20px;
-}
-
-/* Make modal work well in fullscreen */
-:fullscreen .order-modal, :fullscreen .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-}
-
-/* Responsive design for table filter */
-@media (max-width: 768px) {
-    .table-filter {
-        margin: 15px;
-        padding: 10px;
-        gap: 8px;
-    }
-    
-    .filter-btn {
-        min-width: 40px;
-        height: 40px;
-        font-size: 14px;
-    }
-    
-    .filter-btn#filter-all {
-        min-width: 55px;
-        font-size: 12px;
-    }
-    
-    .modal-content {
-        padding: 20px;
-        margin: 10px;
-        max-height: 90vh;
-    }
-    
-    .modal-actions {
-        flex-direction: column;
-    }
-    
-    .modal-btn {
-        width: 100%;
-    }
-}
-
-
 .table-header {
     display: flex;
     justify-content: space-between;
@@ -1124,5 +921,104 @@ body {
     .table-pay-btn {
         padding: 12px 20px;
         font-size: 16px;
+    }
+
+    .table-filter {
+        margin: 15px;
+        padding: 10px;
+        gap: 8px;
+    }
+    
+    .filter-btn {
+        min-width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+    
+    .filter-btn#filter-all {
+        min-width: 55px;
+        font-size: 12px;
+    }
+    
+    .modal-content {
+        padding: 20px;
+        margin: 10px;
+        max-height: 90vh;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .modal-btn {
+        width: 100%;
+    }
+
+    .container {
+        margin: 10px;
+        border-radius: 12px;
+    }
+    
+    .header {
+        padding: 20px;
+    }
+    
+    .header h1 {
+        font-size: 2em;
+    }
+    
+    .content {
+        padding: 20px;
+    }
+    
+    .table-section {
+        padding: 20px;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .order-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .order-info {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .item-row {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    .item-quantity {
+        margin: 0;
+    }
+    
+    .item-price {
+        text-align: left;
+        min-width: auto;
+    }
+    
+    .order-total {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .action-btn {
+        width: 100%;
+    }
+    
+    .menu-grid {
+        grid-template-columns: 1fr;
     }
 }
