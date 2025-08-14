@@ -290,15 +290,15 @@ $max_tables = get_table_count();
 
     /* Table section enhancements for new orders */
     .table-section.has-new-orders {
-        animation: tableGlow 3s infinite;
+        animation: tableGlow 0.7s infinite;
     }
 
     @keyframes tableGlow {
         0%, 100% {
-            box-shadow: 0 0 10px rgba(243, 156, 18, 0.2);
+            box-shadow: 0 0 10px rgba(14, 149, 227, 0.4);
         }
         50% {
-            box-shadow: 0 0 20px rgba(243, 156, 18, 0.4);
+            box-shadow: 0 0 40px rgba(71, 249, 246, 0.8);
         }
     }
 
@@ -602,7 +602,7 @@ $max_tables = get_table_count();
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title" id="modalTitle">Pielāgo savu ēdienu:</h3>
-            <button class="close-btn" onclick="closeCustomize()">&times;</button>
+            <button class="close-modal" onclick="closeCustomize()">&times;</button>
         </div>
 
         <div class="customization-section">
