@@ -10,7 +10,7 @@ if ($table < 1 || $table > get_table_count()) {
 }
 $url = "http://192.168.8.23/qr-ordering/public/menu.php?table=$table";
 
-// home url - "http://192.168.8.135/qr-ordering/qr-ordering/public/menu.php?table=$table" 
+// home url - "http://192.168.8.135/qr-ordering/qr-ordering/public/menu.php?table=$table"
 
 // bouling url - "http://192.168.8.23/qr-ordering/public/menu.php?table=$table"
 

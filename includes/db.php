@@ -47,10 +47,11 @@ function create_order($table_id, $items, $customizations = []) {
     $conn = db_connect();
     global $ORDERS, $ORDER_ITEMS;
     if ($conn) {
-        $conn->query("INSERT INTO orders (table_id, status, created_at) VALUES ($table_id, 'pending', NOW())");
+        // Create order with is_new_kitchen = 1 and is_new_register = 1 (new order for both)
+        $conn->query("INSERT INTO orders (table_id, status, is_new_kitchen, is_new_register, created_at) VALUES ($table_id, 'pending', 1, 1, NOW())");
         $order_id = $conn->insert_id;
         foreach ($items as $item_id => $qty) {
-            $customization_data = isset($customizations[$item_id]) ? $conn->real_escape_string($customizations[$item_id]) : '';
+            $customization_data = isset($customizations[$item_id]) ? $conn->real_escape_string(json_encode($customizations[$item_id])) : '';
             $conn->query("INSERT INTO order_items (order_id, menu_item_id, quantity, customizations) VALUES ($order_id, $item_id, $qty, '$customization_data')");
         }
         $conn->close();
@@ -61,6 +62,8 @@ function create_order($table_id, $items, $customizations = []) {
             'id' => $order_id,
             'table_id' => $table_id,
             'status' => 'pending',
+            'is_new_kitchen' => 1,
+            'is_new_register' => 1,
             'created_at' => date('Y-m-d H:i:s')
         ];
         foreach ($items as $item_id => $qty) {
@@ -69,7 +72,7 @@ function create_order($table_id, $items, $customizations = []) {
                 'order_id' => $order_id,
                 'menu_item_id' => $item_id,
                 'quantity' => $qty,
-                'customizations' => isset($customizations[$item_id]) ? $customizations[$item_id] : ''
+                'customizations' => isset($customizations[$item_id]) ? json_encode($customizations[$item_id]) : ''
             ];
         }
         return $order_id;
@@ -127,6 +130,108 @@ function update_order_status($order_id, $status) {
         file_put_contents($debug_log, date('Y-m-d H:i:s') . " DB connection failed in update_order_status\n", FILE_APPEND);
         if (isset($ORDERS[$order_id])) $ORDERS[$order_id]['status'] = $status;
     }
+}
+
+// UPDATED FUNCTION: Mark order as acknowledged for kitchen only
+function acknowledge_kitchen_order($order_id) {
+    $conn = db_connect();
+    global $ORDERS;
+    if ($conn) {
+        $conn->query("UPDATE orders SET is_new_kitchen = 0 WHERE id = $order_id");
+        $conn->close();
+    } else {
+        if (isset($ORDERS[$order_id])) {
+            $ORDERS[$order_id]['is_new_kitchen'] = 0;
+        }
+    }
+}
+
+// NEW FUNCTION: Mark order as acknowledged for register only
+function acknowledge_register_order($order_id) {
+    $conn = db_connect();
+    global $ORDERS;
+    if ($conn) {
+        $conn->query("UPDATE orders SET is_new_register = 0 WHERE id = $order_id");
+        $conn->close();
+    } else {
+        if (isset($ORDERS[$order_id])) {
+            $ORDERS[$order_id]['is_new_register'] = 0;
+        }
+    }
+}
+
+// DEPRECATED: Keep for backward compatibility but rename to avoid confusion
+function acknowledge_order($order_id) {
+    // This function now acknowledges for both kitchen and register
+    // Only use this if you want to acknowledge for both systems at once
+    acknowledge_kitchen_order($order_id);
+    acknowledge_register_order($order_id);
+}
+
+// UPDATED FUNCTION: Get count of new orders for kitchen
+function get_new_kitchen_orders_count() {
+    $conn = db_connect();
+    if ($conn) {
+        $result = $conn->query("SELECT COUNT(*) as count FROM orders WHERE is_new_kitchen = 1 AND status IN ('pending', 'preparing')");
+        $row = $result->fetch_assoc();
+        $conn->close();
+        return intval($row['count']);
+    }
+    
+    // Fallback for no database
+    global $ORDERS;
+    return count(array_filter($ORDERS, function($order) {
+        return isset($order['is_new_kitchen']) && $order['is_new_kitchen'] == 1 && in_array($order['status'], ['pending', 'preparing']);
+    }));
+}
+
+// NEW FUNCTION: Get count of new orders for register
+function get_new_register_orders_count() {
+    $conn = db_connect();
+    if ($conn) {
+        $result = $conn->query("SELECT COUNT(*) as count FROM orders WHERE is_new_register = 1 AND status IN ('pending', 'preparing', 'ready')");
+        $row = $result->fetch_assoc();
+        $conn->close();
+        return intval($row['count']);
+    }
+    
+    // Fallback for no database
+    global $ORDERS;
+    return count(array_filter($ORDERS, function($order) {
+        return isset($order['is_new_register']) && $order['is_new_register'] == 1 && in_array($order['status'], ['pending', 'preparing', 'ready']);
+    }));
+}
+
+// UPDATED FUNCTION: Check if there are any new kitchen orders
+function has_new_kitchen_orders() {
+    $conn = db_connect();
+    if ($conn) {
+        $menu_items = get_menu_items();
+        $orders = get_orders();
+        
+        foreach ($orders as $order) {
+            if ($order['is_new_kitchen'] == 1 && in_array($order['status'], ['pending', 'preparing'])) {
+                if (has_kitchen_items($order['id'], $menu_items)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// NEW FUNCTION: Check if there are any new register orders
+function has_new_register_orders() {
+    $conn = db_connect();
+    if ($conn) {
+        $orders = get_orders();
+        foreach ($orders as $order) {
+            if ($order['is_new_register'] == 1 && in_array($order['status'], ['pending', 'preparing', 'ready'])) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 function get_order_total($order_id) {
@@ -210,4 +315,130 @@ function get_table_list() {
         $tables[] = $i;
     }
     return $tables;
+}
+
+// Function to get all drink category names (centralized configuration)
+function get_drink_categories() {
+    return [
+        'dzērieni',                    // Current drinks category
+        'bezalkoholiskie dzērieni',    // Non-alcoholic drinks
+        'alkoholiskie dzērieni',       // Alcoholic drinks
+        // Add more drink categories here as needed
+    ];
+}
+
+// Updated function to check if an order has kitchen-relevant items
+function has_kitchen_items($order_id, $menu_items) {
+    $items = get_order_items($order_id);
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // If item has no category or is not a drink category, it belongs in kitchen
+        if (empty($category) || !in_array($category, $drink_categories)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Updated function to get only kitchen-relevant items from an order
+function get_kitchen_items($order_id, $menu_items) {
+    $items = get_order_items($order_id);
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $kitchen_items = [];
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // Include item if it has no category or is not a drink category
+        if (empty($category) || !in_array($category, $drink_categories)) {
+            $kitchen_items[] = $item;
+        }
+    }
+    
+    return $kitchen_items;
+}
+
+// Updated function to filter items for kitchen view (for get_orders.php)
+function filter_kitchen_items($items, $menu_items) {
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $filtered_items = [];
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // Include item if it has no category or is not a drink category
+        if (empty($category) || !in_array($category, $drink_categories)) {
+            $filtered_items[] = $item;
+        }
+    }
+    
+    return $filtered_items;
+}
+
+// Optional: Function to check if a specific item is a drink
+function is_drink_item($menu_item) {
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $category = strtolower(trim($menu_item['category_name'] ?? ''));
+    
+    return !empty($category) && in_array($category, $drink_categories);
+}
+
+// Optional: Function to get only drink items from an order (for bar/drinks station)
+function get_drink_items($order_id, $menu_items) {
+    $items = get_order_items($order_id);
+    $drink_categories = array_map('strtolower', get_drink_categories());
+    $drink_items = [];
+    
+    foreach ($items as $item) {
+        $menu_item = $menu_items[$item['menu_item_id']];
+        $category = strtolower(trim($menu_item['category_name'] ?? ''));
+        
+        // Include item if it's in a drink category
+        if (!empty($category) && in_array($category, $drink_categories)) {
+            $drink_items[] = $item;
+        }
+    }
+    
+    return $drink_items;
+}
+
+/**
+ * Get all unpaid orders for a specific table
+ * @param int $table_id The table ID
+ * @return array Array of unpaid orders for the table
+ */
+function get_table_unpaid_orders($table_id) {
+    $conn = db_connect();
+    global $ORDERS;
+    
+    if ($conn) {
+        $table_id_escaped = intval($table_id);
+        $sql = "SELECT id, table_id, status, created_at 
+                FROM orders 
+                WHERE table_id = $table_id_escaped AND status != 'paid' 
+                ORDER BY created_at ASC";
+        
+        $result = $conn->query($sql);
+        $orders = [];
+        
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $orders[] = $row;
+            }
+        }
+        
+        $conn->close();
+        return $orders;
+    }
+    
+    // Fallback for no database - use global ORDERS array
+    return array_filter($ORDERS, function($order) use ($table_id) {
+        return $order['table_id'] == $table_id && $order['status'] !== 'paid';
+    });
 }
