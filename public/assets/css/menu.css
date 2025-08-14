@@ -99,7 +99,7 @@ body {
 .food-image img {
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain; /* This shows the complete image without cropping */
+    object-fit: contain; /* This shows the complete image without ping */
     object-position: center;
     transition: transform 0.3s ease;
     position: relative;
