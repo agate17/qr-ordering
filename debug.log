@@ -299,3 +299,19 @@
 2025-08-14 14:30:17 update_order_status called with order_id=3, status=paid
 2025-08-14 14:30:17 Query: UPDATE orders SET status='paid' WHERE id=3
 >>>>>>> 43f58498f6ad689b5d70ed533088e545004d1bac
+2025-08-14 15:22:07 update_order_status called with order_id=47, status=paid
+2025-08-14 15:22:07 Query: UPDATE orders SET status='paid' WHERE id=47
+2025-08-14 15:22:11 update_order_status called with order_id=48, status=paid
+2025-08-14 15:22:11 Query: UPDATE orders SET status='paid' WHERE id=48
+2025-08-14 22:55:06 update_order_status called with order_id=1, status=preparing
+2025-08-14 22:55:06 Query: UPDATE orders SET status='preparing' WHERE id=1
+2025-08-14 22:55:08 update_order_status called with order_id=3, status=preparing
+2025-08-14 22:55:08 Query: UPDATE orders SET status='preparing' WHERE id=3
+2025-08-14 22:55:09 update_order_status called with order_id=2, status=preparing
+2025-08-14 22:55:09 Query: UPDATE orders SET status='preparing' WHERE id=2
+2025-08-14 22:55:12 update_order_status called with order_id=1, status=prepared
+2025-08-14 22:55:12 Query: UPDATE orders SET status='prepared' WHERE id=1
+2025-08-14 22:55:14 update_order_status called with order_id=3, status=prepared
+2025-08-14 22:55:14 Query: UPDATE orders SET status='prepared' WHERE id=3
+2025-08-14 22:55:15 update_order_status called with order_id=2, status=prepared
+2025-08-14 22:55:15 Query: UPDATE orders SET status='prepared' WHERE id=2
