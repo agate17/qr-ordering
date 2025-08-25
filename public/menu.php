@@ -26,6 +26,29 @@ foreach ($menu as $item) {
     }
 }
 
+// Simple ordering: drinks last, alcoholic drinks at bottom
+$ordered_categories = [];
+$drink_categories = [];
+$alcoholic_categories = [];
+
+foreach ($categories as $cat_name => $items) {
+    $cat_lower = strtolower(trim($cat_name));
+    
+    if ($cat_lower === 'alkoholiskie dzērieni') {
+        // Alcoholic drinks go last of all
+        $alcoholic_categories[$cat_name] = $items;
+    } elseif (in_array($cat_lower, ['dzērieni', 'bezalkoholiskie dzērieni', 'bāra uzkodas'])) {
+        // Other drink categories go after food but before alcoholic
+        $drink_categories[$cat_name] = $items;
+    } else {
+        // Food categories go first
+        $ordered_categories[$cat_name] = $items;
+    }
+}
+
+// Combine in the desired order: Food -> Drinks -> Alcoholic Drinks
+$categories = array_merge($ordered_categories, $drink_categories, $alcoholic_categories);
+
 // Function to check if item is alcoholic
 function is_alcoholic_item($category_name) {
     return strtolower(trim($category_name ?? '')) === 'alkoholiskie dzērieni';
