@@ -133,7 +133,6 @@ foreach ($filtered_kitchen_orders as $order) {
                     
                     <div class="order-items">
                         <?php 
-                        // Only show kitchen-relevant items
                         foreach ($kitchen_items as $item): 
                             $menuItem = $menu[$item['menu_item_id']];
                             $customizationDisplay = format_customizations(isset($item['customizations']) ? $item['customizations'] : '');
@@ -148,6 +147,7 @@ foreach ($filtered_kitchen_orders as $order) {
                                 <div class="item-quantity">x<?php echo $item['quantity']; ?></div>
                             </div>
                             
+                            <!-- FIX: Actually display the customizations -->
                             <?php if (!empty($customizationDisplay)): ?>
                                 <div class="customizations">
                                     <?php echo $customizationDisplay; ?>

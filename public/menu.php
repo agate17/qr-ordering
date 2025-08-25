@@ -6,6 +6,14 @@ if ($table_id < 1 || $table_id > get_table_count()) {
 }
 $menu = get_menu_items();
 
+// Get sauces for main food items
+$sauces = [];
+foreach ($menu as $item) {
+    if (strtolower(trim($item['category_name'] ?? '')) === 'mērces') {
+        $sauces[] = $item;
+    }
+}
+
 // Group items by category
 $categories = [];
 $uncategorized = [];
@@ -21,6 +29,11 @@ foreach ($menu as $item) {
 // Function to check if item is alcoholic
 function is_alcoholic_item($category_name) {
     return strtolower(trim($category_name ?? '')) === 'alkoholiskie dzērieni';
+}
+
+// Function to check if item is main food (needs sauce options)
+function is_main_food_item($category_name) {
+    return strtolower(trim($category_name ?? '')) === 'zep cep';
 }
 ?> 
 <!DOCTYPE html>
@@ -99,6 +112,54 @@ function is_alcoholic_item($category_name) {
         .category-title.alcoholic-category::after {
             content: " 🍷";
         }
+        
+        /* Sauce selection styles */
+        .sauce-instances {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #e67e22;
+        }
+        
+        .sauce-instance {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+        
+        .sauce-instance:last-child {
+            margin-bottom: 0;
+        }
+        
+        .sauce-instance-label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #2c3e50;
+            min-width: 60px;
+        }
+        
+        .sauce-select {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+            background: white;
+        }
+        
+        .sauce-select:focus {
+            border-color: #e67e22;
+            outline: none;
+        }
+        
+        .sauce-instances-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #e67e22;
+        }
     </style>
 </head>
 <body>
@@ -136,6 +197,7 @@ function is_alcoholic_item($category_name) {
                 <div class="menu-grid">
                     <?php foreach ($category_items as $item): 
                         $is_alcoholic = is_alcoholic_item($item['category_name']);
+                        $is_main_food = is_main_food_item($item['category_name']);
                     ?>
                     <div class="menu-item <?php echo $is_alcoholic ? 'alcoholic' : ''; ?>">
                         <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
@@ -168,7 +230,8 @@ function is_alcoholic_item($category_name) {
                                                min="0" 
                                                max="10" 
                                                value="0"
-                                               onchange="updateOrderSummary()">
+                                               onchange="updateOrderSummary()"
+                                               data-is-main-food="<?php echo $is_main_food ? '1' : '0'; ?>">
                                         <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
                                     </div>
                                     <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
@@ -176,8 +239,19 @@ function is_alcoholic_item($category_name) {
                                     </button>
                                 </div>
                                 
+                                <!-- Sauce selection for main food items -->
+                                <?php if ($is_main_food): ?>
+                                <div class="sauce-instances" id="sauceInstances_<?php echo $item['id']; ?>" style="display: none;">
+                                    <div class="sauce-instances-title">Mērces izvēle:</div>
+                                    <div id="sauceInstancesContainer_<?php echo $item['id']; ?>"></div>
+                                </div>
+                                <?php endif; ?>
+                                
                                 <!-- Hidden customization fields -->
                                 <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
+                                <?php if ($is_main_food): ?>
+                                <input type="hidden" name="sauces[<?php echo $item['id']; ?>]" id="sauces_<?php echo $item['id']; ?>" value="">
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -271,13 +345,108 @@ function is_alcoholic_item($category_name) {
 // Global variables
 let currentItemId = null;
 let customizations = {};
+let sauceSelections = {};
+
+// Available sauces from PHP
+const availableSauces = <?php echo json_encode($sauces); ?>;
 
 // JavaScript for quantity controls and order summary
 function changeQuantity(itemId, change) {
     const input = document.getElementById('qty_' + itemId);
     const newValue = Math.max(0, Math.min(10, parseInt(input.value) + change));
+    const oldValue = parseInt(input.value);
     input.value = newValue;
+    
+    // Handle sauce instances for main food items
+    if (input.dataset.isMainFood === '1') {
+        updateSauceInstances(itemId, newValue, oldValue);
+    }
+    
     updateOrderSummary();
+}
+
+function updateSauceInstances(itemId, newQuantity, oldQuantity) {
+    const sauceInstancesDiv = document.getElementById('sauceInstances_' + itemId);
+    const container = document.getElementById('sauceInstancesContainer_' + itemId);
+    
+    if (newQuantity > 0) {
+        sauceInstancesDiv.style.display = 'block';
+        
+        // Initialize sauce selections if not exists
+        if (!sauceSelections[itemId]) {
+            sauceSelections[itemId] = [];
+        }
+        
+        // Adjust array length
+        if (newQuantity > oldQuantity) {
+            // Add new instances
+            for (let i = oldQuantity; i < newQuantity; i++) {
+                sauceSelections[itemId][i] = '';
+            }
+        } else if (newQuantity < oldQuantity) {
+            // Remove excess instances
+            sauceSelections[itemId] = sauceSelections[itemId].slice(0, newQuantity);
+        }
+        
+        // Rebuild the sauce selection UI
+        rebuildSauceSelectionUI(itemId, newQuantity);
+    } else {
+        sauceInstancesDiv.style.display = 'none';
+        sauceSelections[itemId] = [];
+    }
+    
+    // Update hidden field
+    updateSauceHiddenField(itemId);
+}
+
+function rebuildSauceSelectionUI(itemId, quantity) {
+    const container = document.getElementById('sauceInstancesContainer_' + itemId);
+    container.innerHTML = '';
+    
+    for (let i = 0; i < quantity; i++) {
+        const instanceDiv = document.createElement('div');
+        instanceDiv.className = 'sauce-instance';
+        
+        const label = document.createElement('div');
+        label.className = 'sauce-instance-label';
+        label.textContent = `${i + 1}. priekš:`;
+        
+        const select = document.createElement('select');
+        select.className = 'sauce-select';
+        select.onchange = function() {
+            sauceSelections[itemId][i] = this.value;
+            updateSauceHiddenField(itemId);
+            updateOrderSummary();
+        };
+        
+        // Add "No sauce" option
+        const noSauceOption = document.createElement('option');
+        noSauceOption.value = '';
+        noSauceOption.textContent = 'Bez mērces';
+        select.appendChild(noSauceOption);
+        
+        // Add sauce options
+        availableSauces.forEach(sauce => {
+            const option = document.createElement('option');
+            option.value = sauce.id;
+            option.textContent = sauce.name;
+            if (sauceSelections[itemId][i] == sauce.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        
+        instanceDiv.appendChild(label);
+        instanceDiv.appendChild(select);
+        container.appendChild(instanceDiv);
+    }
+}
+
+function updateSauceHiddenField(itemId) {
+    const hiddenField = document.getElementById('sauces_' + itemId);
+    if (hiddenField) {
+        hiddenField.value = JSON.stringify(sauceSelections[itemId] || []);
+    }
 }
 
 function updateOrderSummary() {
@@ -305,7 +474,25 @@ function updateOrderSummary() {
             // Add customization info if exists
             let customizationInfo = '';
             if (customizations[itemId] && Object.keys(customizations[itemId]).length > 0) {
-                customizationInfo = '<br><small style="color: #e67e22;">✓ Customized</small>';
+                customizationInfo += '<br><small style="color: #e67e22;">✓ Pielāgots</small>';
+            }
+            
+            // Add sauce info for main food items
+            if (input.dataset.isMainFood === '1' && sauceSelections[itemId]) {
+                const sauceInfo = [];
+                sauceSelections[itemId].forEach((sauceId, index) => {
+                    if (sauceId) {
+                        const sauce = availableSauces.find(s => s.id == sauceId);
+                        if (sauce) {
+                            sauceInfo.push(`${index + 1}: ${sauce.name}`);
+                        }
+                    } else {
+                        sauceInfo.push(`${index + 1}: Bez mērces`);
+                    }
+                });
+                if (sauceInfo.length > 0) {
+                    customizationInfo += '<br><small style="color: #27ae60;">🍯 ' + sauceInfo.join(', ') + '</small>';
+                }
             }
             
             summaryHTML += `
@@ -410,10 +597,10 @@ function saveCustomizations() {
     const customizeBtn = document.getElementById(`customize_${currentItemId}`);
     if (allergies.length > 0 || removeIngredients.length > 0 || specialRequests) {
         customizeBtn.classList.add('has-customizations');
-        customizeBtn.textContent = 'Customized ✓';
+        customizeBtn.textContent = 'Pielāgots ✓';
     } else {
         customizeBtn.classList.remove('has-customizations');
-        customizeBtn.textContent = 'Customize';
+        customizeBtn.textContent = 'Pielāgot';
     }
     
     // Update order summary

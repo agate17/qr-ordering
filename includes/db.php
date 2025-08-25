@@ -51,7 +51,13 @@ function create_order($table_id, $items, $customizations = []) {
         $conn->query("INSERT INTO orders (table_id, status, is_new_kitchen, is_new_register, created_at) VALUES ($table_id, 'pending', 1, 1, NOW())");
         $order_id = $conn->insert_id;
         foreach ($items as $item_id => $qty) {
-            $customization_data = isset($customizations[$item_id]) ? $conn->real_escape_string(json_encode($customizations[$item_id])) : '';
+            // Handle customizations properly
+            $customization_data = '';
+            if (isset($customizations[$item_id]) && !empty($customizations[$item_id])) {
+                // The customization data is already JSON encoded from submit_order.php
+                $customization_data = $conn->real_escape_string($customizations[$item_id]);
+            }
+            
             $conn->query("INSERT INTO order_items (order_id, menu_item_id, quantity, customizations) VALUES ($order_id, $item_id, $qty, '$customization_data')");
         }
         $conn->close();
@@ -72,7 +78,7 @@ function create_order($table_id, $items, $customizations = []) {
                 'order_id' => $order_id,
                 'menu_item_id' => $item_id,
                 'quantity' => $qty,
-                'customizations' => isset($customizations[$item_id]) ? json_encode($customizations[$item_id]) : ''
+                'customizations' => isset($customizations[$item_id]) ? $customizations[$item_id] : ''
             ];
         }
         return $order_id;
@@ -114,25 +120,16 @@ function get_order_items($order_id) {
 function update_order_status($order_id, $status) {
     $conn = db_connect();
     global $ORDERS;
-    $debug_log = __DIR__ . '/../debug.log';
     $query = "UPDATE orders SET status='" . $conn->real_escape_string($status) . "' WHERE id=$order_id";
-    file_put_contents($debug_log, date('Y-m-d H:i:s') . " update_order_status called with order_id=$order_id, status=$status\n", FILE_APPEND);
-    file_put_contents($debug_log, date('Y-m-d H:i:s') . " Query: $query\n", FILE_APPEND);
     if ($conn) {
         $result = $conn->query($query);
-        if (!$result) {
-            file_put_contents($debug_log, date('Y-m-d H:i:s') . " MySQL error updating order status: " . $conn->error . "\n", FILE_APPEND);
-        } else if ($conn->affected_rows === 0) {
-            file_put_contents($debug_log, date('Y-m-d H:i:s') . " Order status update failed for order_id=$order_id, status=$status\n", FILE_APPEND);
-        }
         $conn->close();
     } else {
-        file_put_contents($debug_log, date('Y-m-d H:i:s') . " DB connection failed in update_order_status\n", FILE_APPEND);
         if (isset($ORDERS[$order_id])) $ORDERS[$order_id]['status'] = $status;
     }
 }
 
-// UPDATED FUNCTION: Mark order as acknowledged for kitchen only
+// Mark order as acknowledged for kitchen only
 function acknowledge_kitchen_order($order_id) {
     $conn = db_connect();
     global $ORDERS;
@@ -146,7 +143,7 @@ function acknowledge_kitchen_order($order_id) {
     }
 }
 
-// NEW FUNCTION: Mark order as acknowledged for register only
+// Mark order as acknowledged for register only
 function acknowledge_register_order($order_id) {
     $conn = db_connect();
     global $ORDERS;
@@ -168,7 +165,7 @@ function acknowledge_order($order_id) {
     acknowledge_register_order($order_id);
 }
 
-// UPDATED FUNCTION: Get count of new orders for kitchen
+// Get count of new orders for kitchen
 function get_new_kitchen_orders_count() {
     $conn = db_connect();
     if ($conn) {
@@ -185,7 +182,7 @@ function get_new_kitchen_orders_count() {
     }));
 }
 
-// NEW FUNCTION: Get count of new orders for register
+// Get count of new orders for register
 function get_new_register_orders_count() {
     $conn = db_connect();
     if ($conn) {
@@ -202,7 +199,7 @@ function get_new_register_orders_count() {
     }));
 }
 
-// UPDATED FUNCTION: Check if there are any new kitchen orders
+// Check if there are any new kitchen orders
 function has_new_kitchen_orders() {
     $conn = db_connect();
     if ($conn) {
@@ -220,7 +217,7 @@ function has_new_kitchen_orders() {
     return false;
 }
 
-// NEW FUNCTION: Check if there are any new register orders
+// Check if there are any new register orders
 function has_new_register_orders() {
     $conn = db_connect();
     if ($conn) {
@@ -244,7 +241,7 @@ function get_order_total($order_id) {
     return $total;
 }
 
-// New function to format customization data for display
+// Format customization data for display
 function format_customizations($customization_json) {
     if (empty($customization_json)) return '';
     
@@ -256,17 +253,34 @@ function format_customizations($customization_json) {
         
         // Format allergies
         if (!empty($customizations['allergies'])) {
-            $formatted[] = '<strong>Allergies:</strong> ' . implode(', ', $customizations['allergies']);
+            $formatted[] = '<strong>Alerģijas:</strong> ' . implode(', ', $customizations['allergies']);
         }
         
         // Format removed ingredients
         if (!empty($customizations['remove_ingredients'])) {
-            $formatted[] = '<strong>Remove:</strong> ' . implode(', ', $customizations['remove_ingredients']);
+            $formatted[] = '<strong>Izņemt:</strong> ' . implode(', ', $customizations['remove_ingredients']);
         }
         
         // Format special requests
         if (!empty($customizations['special_requests'])) {
-            $formatted[] = '<strong>Special:</strong> ' . htmlspecialchars($customizations['special_requests']);
+            $formatted[] = '<strong>Īpaši:</strong> ' . htmlspecialchars($customizations['special_requests']);
+        }
+        
+        // Format sauce selections - Remove "priekš"
+        if (!empty($customizations['sauces'])) {
+            $sauce_info = [];
+            foreach ($customizations['sauces'] as $sauce) {
+                $instance_num = $sauce['instance'];
+                $sauce_name = $sauce['sauce_name'];
+                if ($sauce_name === 'Bez mērces') {
+                    $sauce_info[] = "{$instance_num}: <em>Bez mērces</em>";
+                } else {
+                    $sauce_info[] = "{$instance_num}: <strong>{$sauce_name}</strong>";
+                }
+            }
+            if (!empty($sauce_info)) {
+                $formatted[] = '<strong style="color: #fbbf24;"> Mērces:</strong><br>' . implode('<br>', $sauce_info);
+            }
         }
         
         return implode('<br>', $formatted);
@@ -274,8 +288,6 @@ function format_customizations($customization_json) {
         return '';
     }
 } 
-
-// Add these functions to db.php
 
 function get_restaurant_setting($key, $default = null) {
     $conn = db_connect();
@@ -322,12 +334,13 @@ function get_drink_categories() {
     return [
         'dzērieni',                    // Current drinks category
         'bezalkoholiskie dzērieni',    // Non-alcoholic drinks
-        'alkoholiskie dzērieni',       // Alcoholic drinks
+        'alkoholiskie dzērieni',        // Alcoholic drinks
+        'bāra uzkodas'                  // Bar snacks
         // Add more drink categories here as needed
     ];
 }
 
-// Updated function to check if an order has kitchen-relevant items
+// Check if an order has kitchen-relevant items
 function has_kitchen_items($order_id, $menu_items) {
     $items = get_order_items($order_id);
     $drink_categories = array_map('strtolower', get_drink_categories());
@@ -344,7 +357,7 @@ function has_kitchen_items($order_id, $menu_items) {
     return false;
 }
 
-// Updated function to get only kitchen-relevant items from an order
+// Get only kitchen-relevant items from an order
 function get_kitchen_items($order_id, $menu_items) {
     $items = get_order_items($order_id);
     $drink_categories = array_map('strtolower', get_drink_categories());
@@ -363,7 +376,7 @@ function get_kitchen_items($order_id, $menu_items) {
     return $kitchen_items;
 }
 
-// Updated function to filter items for kitchen view (for get_orders.php)
+// Filter items for kitchen view (for get_orders.php)
 function filter_kitchen_items($items, $menu_items) {
     $drink_categories = array_map('strtolower', get_drink_categories());
     $filtered_items = [];
@@ -381,7 +394,7 @@ function filter_kitchen_items($items, $menu_items) {
     return $filtered_items;
 }
 
-// Optional: Function to check if a specific item is a drink
+// Check if a specific item is a drink
 function is_drink_item($menu_item) {
     $drink_categories = array_map('strtolower', get_drink_categories());
     $category = strtolower(trim($menu_item['category_name'] ?? ''));
@@ -389,7 +402,7 @@ function is_drink_item($menu_item) {
     return !empty($category) && in_array($category, $drink_categories);
 }
 
-// Optional: Function to get only drink items from an order (for bar/drinks station)
+// Get only drink items from an order (for bar/drinks station)
 function get_drink_items($order_id, $menu_items) {
     $items = get_order_items($order_id);
     $drink_categories = array_map('strtolower', get_drink_categories());
@@ -441,4 +454,28 @@ function get_table_unpaid_orders($table_id) {
     return array_filter($ORDERS, function($order) use ($table_id) {
         return $order['table_id'] == $table_id && $order['status'] !== 'paid';
     });
+}
+
+function get_menu_item_by_id($item_id) {
+    $conn = db_connect();
+    global $MENU_ITEMS;
+    
+    if ($conn) {
+        $item_id_escaped = intval($item_id);
+        $sql = "SELECT mi.*, c.name as category_name 
+                FROM menu_items mi 
+                LEFT JOIN categories c ON mi.category_id = c.id 
+                WHERE mi.id = $item_id_escaped AND mi.available = 1";
+        $result = $conn->query($sql);
+        
+        if ($result && $result->num_rows > 0) {
+            $item = $result->fetch_assoc();
+            $conn->close();
+            return $item;
+        }
+        $conn->close();
+    }
+    
+    // Fallback to global array
+    return isset($MENU_ITEMS[$item_id]) ? $MENU_ITEMS[$item_id] : false;
 }
