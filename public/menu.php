@@ -5,12 +5,11 @@ require_once __DIR__ . '/../includes/db.php';
 $sauce_config = [
     // By category - applies to all items in that category
     'categories' => [
-        'zep cep' => 1,        // fries get 1 sauce
-        'uzkodas' => 3,        // appetizers get 3 sauces
+        'uzkodas' => 0,        // appetizers get 0 sauces
     ],
     // By specific item name - overrides category settings
     'items' => [
-        'maizes nūjiņas' => 0,            // small fries get no sauce
+        'uzkodu plate' => 3,            // uzkodu plate gets 3 sauces
     ]
 ];
 
