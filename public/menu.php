@@ -1,5 +1,39 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
+
+// Sauce configuration - easy to modify without touching database or main logic
+$sauce_config = [
+    // By category - applies to all items in that category
+    'categories' => [
+        'zep cep' => 1,        // fries get 1 sauce
+        'uzkodas' => 3,        // appetizers get 3 sauces
+    ],
+    // By specific item name - overrides category settings
+    'items' => [
+        'maizes nūjiņas' => 0,            // small fries get no sauce
+    ]
+];
+
+// Function to get sauce count using the configuration
+function get_sauce_count_from_config($item_name, $category_name, $config) {
+    $item_lower = strtolower(trim($item_name ?? ''));
+    $category_lower = strtolower(trim($category_name ?? ''));
+    
+    // First check if this specific item has a custom sauce count
+    if (isset($config['items'][$item_lower])) {
+        return $config['items'][$item_lower];
+    }
+    
+    // Otherwise use the category default
+    return $config['categories'][$category_lower] ?? 0;
+}
+
+// Helper function for backward compatibility
+function get_sauce_count($item_name, $category_name, $config) {
+    return get_sauce_count_from_config($item_name, $category_name, $config);
+}
+
+// Your existing code continues here...
 $table_id = isset($_GET['table']) ? intval($_GET['table']) : 0;
 if ($table_id < 1 || $table_id > get_table_count()) {
     die('Invalid or missing table number.');
@@ -54,9 +88,9 @@ function is_alcoholic_item($category_name) {
     return strtolower(trim($category_name ?? '')) === 'alkoholiskie dzērieni';
 }
 
-// Function to check if item is main food (needs sauce options)
-function is_main_food_item($category_name) {
-    return strtolower(trim($category_name ?? '')) === 'zep cep';
+// Updated function to check if item needs sauce options
+function is_main_food_item($item_name, $category_name, $config) {
+    return get_sauce_count_from_config($item_name, $category_name, $config) > 0;
 }
 ?> 
 <!DOCTYPE html>
@@ -68,8 +102,9 @@ function is_main_food_item($category_name) {
     <link rel="stylesheet" type="text/css" href="assets/css/menu.css?v=<?php echo time(); ?>">
     <!-- Bootstrap Icons CDN for filter icon -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- Your existing styles remain the same -->
     <style>
-        /* Force remove any placeholder icons */
+        /* All your existing CSS styles remain unchanged */
         .food-image::before {
             display: none !important;
             content: none !important;
@@ -79,7 +114,6 @@ function is_main_food_item($category_name) {
             content: none !important;
         }
         
-        /* Styles for alcoholic items */
         .menu-item.alcoholic {
             position: relative;
             opacity: 0.8;
@@ -125,7 +159,6 @@ function is_main_food_item($category_name) {
             background: #bdc3c7;
         }
         
-        /* Add visual indicator to category title */
         .category-title.alcoholic-category {
             color: #e74c3c;
             border-left: 4px solid #e74c3c;
@@ -136,11 +169,10 @@ function is_main_food_item($category_name) {
             content: " 🍷";
         }
         
-        /* Sauce selection styles */
         .sauce-instances {
             margin-top: 12px;
             padding: 12px;
-            background: #f8f9fa;
+            background: #4b5563;
             border-radius: 6px;
             border-left: 3px solid #e67e22;
         }
@@ -159,17 +191,17 @@ function is_main_food_item($category_name) {
         .sauce-instance-label {
             font-weight: 600;
             font-size: 0.9em;
-            color: #2c3e50;
+            color: #fff;
             min-width: 60px;
         }
         
         .sauce-select {
             flex: 1;
             padding: 4px 8px;
-            border: 1px solid #ddd;
+            border: 1px solid #e67e22;
             border-radius: 4px;
             font-size: 0.9em;
-            background: white;
+            background: #4b5563;
         }
         
         .sauce-select:focus {
@@ -182,6 +214,25 @@ function is_main_food_item($category_name) {
             font-weight: 600;
             margin-bottom: 8px;
             color: #e67e22;
+        }
+        
+        /* New styles for multiple sauce instances */
+        .sauce-item-group {
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #666;
+        }
+        
+        .sauce-item-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .sauce-item-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #e67e22;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -220,7 +271,8 @@ function is_main_food_item($category_name) {
                 <div class="menu-grid">
                     <?php foreach ($category_items as $item): 
                         $is_alcoholic = is_alcoholic_item($item['category_name']);
-                        $is_main_food = is_main_food_item($item['category_name']);
+                        $sauce_count = get_sauce_count($item['name'], $item['category_name'], $sauce_config);
+                        $is_main_food = $sauce_count > 0;
                     ?>
                     <div class="menu-item <?php echo $is_alcoholic ? 'alcoholic' : ''; ?>">
                         <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
@@ -254,7 +306,8 @@ function is_main_food_item($category_name) {
                                                max="10" 
                                                value="0"
                                                onchange="updateOrderSummary()"
-                                               data-is-main-food="<?php echo $is_main_food ? '1' : '0'; ?>">
+                                               data-is-main-food="<?php echo $is_main_food ? '1' : '0'; ?>"
+                                               data-sauce-count="<?php echo $sauce_count; ?>">
                                         <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
                                     </div>
                                     <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
@@ -283,12 +336,15 @@ function is_main_food_item($category_name) {
             </div>
             <?php endforeach; ?>
             
-            <!-- Display uncategorized items -->
+            <!-- Display uncategorized items (unchanged) -->
             <?php if (!empty($uncategorized)): ?>
             <div class="category-section" data-category="Other Items">
                 <h2 class="category-title">Citi ēdieni</h2>
                 <div class="menu-grid">
-                    <?php foreach ($uncategorized as $item): ?>
+                    <?php foreach ($uncategorized as $item): 
+                        $sauce_count = get_sauce_count($item['name'], '', $sauce_config);
+                        $is_main_food = $sauce_count > 0;
+                    ?>
                     <div class="menu-item">
                         <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
                             <?php if (!empty($item['image_path'])): ?>
@@ -312,7 +368,9 @@ function is_main_food_item($category_name) {
                                            min="0" 
                                            max="10" 
                                            value="0"
-                                           onchange="updateOrderSummary()">
+                                           onchange="updateOrderSummary()"
+                                           data-is-main-food="<?php echo $is_main_food ? '1' : '0'; ?>"
+                                           data-sauce-count="<?php echo $sauce_count; ?>">
                                     <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
                                 </div>
                                 <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
@@ -320,8 +378,19 @@ function is_main_food_item($category_name) {
                                 </button>
                             </div>
                             
+                            <!-- Sauce selection for main food items -->
+                            <?php if ($is_main_food): ?>
+                            <div class="sauce-instances" id="sauceInstances_<?php echo $item['id']; ?>" style="display: none;">
+                                <div class="sauce-instances-title">Mērces izvēle:</div>
+                                <div id="sauceInstancesContainer_<?php echo $item['id']; ?>"></div>
+                            </div>
+                            <?php endif; ?>
+                            
                             <!-- Hidden customization fields -->
                             <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
+                            <?php if ($is_main_food): ?>
+                            <input type="hidden" name="sauces[<?php echo $item['id']; ?>]" id="sauces_<?php echo $item['id']; ?>" value="">
+                            <?php endif; ?>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -342,7 +411,7 @@ function is_main_food_item($category_name) {
     </div>
 </div>
 
-<!-- Customization Modal -->
+<!-- Your existing customization modal remains unchanged -->
 <div class="modal-overlay" id="customizeModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -373,7 +442,7 @@ let sauceSelections = {};
 // Available sauces from PHP
 const availableSauces = <?php echo json_encode($sauces); ?>;
 
-// JavaScript for quantity controls and order summary
+// Updated JavaScript for flexible sauce handling
 function changeQuantity(itemId, change) {
     const input = document.getElementById('qty_' + itemId);
     const newValue = Math.max(0, Math.min(10, parseInt(input.value) + change));
@@ -389,79 +458,99 @@ function changeQuantity(itemId, change) {
 }
 
 function updateSauceInstances(itemId, newQuantity, oldQuantity) {
+    const input = document.getElementById('qty_' + itemId);
     const sauceInstancesDiv = document.getElementById('sauceInstances_' + itemId);
     const container = document.getElementById('sauceInstancesContainer_' + itemId);
+    
+    // Get sauce count from data attribute
+    const sauceCount = parseInt(input.dataset.sauceCount) || 1;
     
     if (newQuantity > 0) {
         sauceInstancesDiv.style.display = 'block';
         
-        // Initialize sauce selections if not exists
         if (!sauceSelections[itemId]) {
             sauceSelections[itemId] = [];
         }
         
+        // Each quantity gets its own set of sauces
+        const totalSauceInstances = newQuantity * sauceCount;
+        
         // Adjust array length
-        if (newQuantity > oldQuantity) {
-            // Add new instances
-            for (let i = oldQuantity; i < newQuantity; i++) {
+        if (totalSauceInstances > sauceSelections[itemId].length) {
+            for (let i = sauceSelections[itemId].length; i < totalSauceInstances; i++) {
                 sauceSelections[itemId][i] = '';
             }
-        } else if (newQuantity < oldQuantity) {
-            // Remove excess instances
-            sauceSelections[itemId] = sauceSelections[itemId].slice(0, newQuantity);
+        } else if (totalSauceInstances < sauceSelections[itemId].length) {
+            sauceSelections[itemId] = sauceSelections[itemId].slice(0, totalSauceInstances);
         }
         
-        // Rebuild the sauce selection UI
-        rebuildSauceSelectionUI(itemId, newQuantity);
+        rebuildSauceSelectionUI(itemId, newQuantity, sauceCount);
     } else {
         sauceInstancesDiv.style.display = 'none';
         sauceSelections[itemId] = [];
     }
     
-    // Update hidden field
     updateSauceHiddenField(itemId);
 }
 
-function rebuildSauceSelectionUI(itemId, quantity) {
+function rebuildSauceSelectionUI(itemId, quantity, sauceCount) {
     const container = document.getElementById('sauceInstancesContainer_' + itemId);
     container.innerHTML = '';
     
     for (let i = 0; i < quantity; i++) {
-        const instanceDiv = document.createElement('div');
-        instanceDiv.className = 'sauce-instance';
+        // Create a group for each item quantity
+        const itemGroup = document.createElement('div');
+        itemGroup.className = 'sauce-item-group';
         
-        const label = document.createElement('div');
-        label.className = 'sauce-instance-label';
-        label.textContent = `${i + 1}. priekš:`;
+        if (quantity > 1) {
+            const groupTitle = document.createElement('div');
+            groupTitle.className = 'sauce-item-title';
+            groupTitle.textContent = `${i + 1}. ēdiens:`;
+            itemGroup.appendChild(groupTitle);
+        }
         
-        const select = document.createElement('select');
-        select.className = 'sauce-select';
-        select.onchange = function() {
-            sauceSelections[itemId][i] = this.value;
-            updateSauceHiddenField(itemId);
-            updateOrderSummary();
-        };
+        // Create sauce selectors for this item
+        for (let j = 0; j < sauceCount; j++) {
+            const sauceIndex = i * sauceCount + j;
+            
+            const instanceDiv = document.createElement('div');
+            instanceDiv.className = 'sauce-instance';
+            
+            const label = document.createElement('div');
+            label.className = 'sauce-instance-label';
+            label.textContent = `${j + 1}. mērce:`;
+            
+            const select = document.createElement('select');
+            select.className = 'sauce-select';
+            select.onchange = function() {
+                sauceSelections[itemId][sauceIndex] = this.value;
+                updateSauceHiddenField(itemId);
+                updateOrderSummary();
+            };
+            
+            // Add "No sauce" option
+            const noSauceOption = document.createElement('option');
+            noSauceOption.value = '';
+            noSauceOption.textContent = 'Bez mērces';
+            select.appendChild(noSauceOption);
+            
+            // Add sauce options
+            availableSauces.forEach(sauce => {
+                const option = document.createElement('option');
+                option.value = sauce.id;
+                option.textContent = sauce.name;
+                if (sauceSelections[itemId][sauceIndex] == sauce.id) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            
+            instanceDiv.appendChild(label);
+            instanceDiv.appendChild(select);
+            itemGroup.appendChild(instanceDiv);
+        }
         
-        // Add "No sauce" option
-        const noSauceOption = document.createElement('option');
-        noSauceOption.value = '';
-        noSauceOption.textContent = 'Bez mērces';
-        select.appendChild(noSauceOption);
-        
-        // Add sauce options
-        availableSauces.forEach(sauce => {
-            const option = document.createElement('option');
-            option.value = sauce.id;
-            option.textContent = sauce.name;
-            if (sauceSelections[itemId][i] == sauce.id) {
-                option.selected = true;
-            }
-            select.appendChild(option);
-        });
-        
-        instanceDiv.appendChild(label);
-        instanceDiv.appendChild(select);
-        container.appendChild(instanceDiv);
+        container.appendChild(itemGroup);
     }
 }
 
@@ -502,19 +591,34 @@ function updateOrderSummary() {
             
             // Add sauce info for main food items
             if (input.dataset.isMainFood === '1' && sauceSelections[itemId]) {
+                const sauceCount = parseInt(input.dataset.sauceCount) || 1;
                 const sauceInfo = [];
-                sauceSelections[itemId].forEach((sauceId, index) => {
-                    if (sauceId) {
-                        const sauce = availableSauces.find(s => s.id == sauceId);
-                        if (sauce) {
-                            sauceInfo.push(`${index + 1}: ${sauce.name}`);
+                
+                for (let i = 0; i < quantity; i++) {
+                    const itemSauces = [];
+                    for (let j = 0; j < sauceCount; j++) {
+                        const sauceIndex = i * sauceCount + j;
+                        const sauceId = sauceSelections[itemId][sauceIndex];
+                        
+                        if (sauceId) {
+                            const sauce = availableSauces.find(s => s.id == sauceId);
+                            if (sauce) {
+                                itemSauces.push(sauce.name);
+                            }
+                        } else {
+                            itemSauces.push('Bez mērces');
                         }
-                    } else {
-                        sauceInfo.push(`${index + 1}: Bez mērces`);
                     }
-                });
+                    
+                    if (quantity > 1) {
+                        sauceInfo.push(`${i + 1}: ${itemSauces.join(', ')}`);
+                    } else {
+                        sauceInfo.push(itemSauces.join(', '));
+                    }
+                }
+                
                 if (sauceInfo.length > 0) {
-                    customizationInfo += '<br><small style="color: #27ae60;">🍯 ' + sauceInfo.join(', ') + '</small>';
+                    customizationInfo += '<br><small style="color: #27ae60;">🍯 ' + sauceInfo.join(' | ') + '</small>';
                 }
             }
             
@@ -538,6 +642,7 @@ function updateOrderSummary() {
     }
 }
 
+// All your existing JavaScript functions remain the same (openCustomize, closeCustomize, saveCustomizations, etc.)
 function openCustomize(itemId, itemName) {
     currentItemId = itemId;
     document.getElementById('modalTitle').textContent = `Customize: ${itemName}`;
