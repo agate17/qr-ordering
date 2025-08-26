@@ -59,27 +59,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_register_order
 
     $items = [];
     $processed_customizations = [];
-    $processed_sauces = [];
 
     foreach ($qtys as $item_id => $qty) {
         $qty = intval($qty);
         if ($qty > 0) {
             $items[$item_id] = $qty;
             
-            // Process customizations for this item
+            // Start with existing customizations
+            $item_customizations = [];
             if (isset($customizations[$item_id]) && !empty($customizations[$item_id])) {
-                $processed_customizations[$item_id] = $customizations[$item_id];
+                $decoded_custom = json_decode($customizations[$item_id], true);
+                if (is_array($decoded_custom)) {
+                    $item_customizations = $decoded_custom;
+                }
             }
             
-            // Process sauces for this item
+            // Add sauce information if exists
             if (isset($sauces[$item_id]) && !empty($sauces[$item_id])) {
-                $processed_sauces[$item_id] = $sauces[$item_id];
+                $sauce_data = json_decode($sauces[$item_id], true);
+                if (is_array($sauce_data)) {
+                    // Get sauce names for display
+                    $sauce_details = [];
+                    foreach ($sauce_data as $index => $sauce_id) {
+                        if (!empty($sauce_id)) {
+                            $sauce_info = get_menu_item_by_id($sauce_id);
+                            if ($sauce_info) {
+                                $sauce_details[] = [
+                                    'instance' => $index + 1,
+                                    'sauce_id' => intval($sauce_id),
+                                    'sauce_name' => $sauce_info['name']
+                                ];
+                            }
+                        } else {
+                            $sauce_details[] = [
+                                'instance' => $index + 1,
+                                'sauce_id' => null,
+                                'sauce_name' => 'Bez mērces'
+                            ];
+                        }
+                    }
+                    
+                    if (!empty($sauce_details)) {
+                        $item_customizations['sauces'] = $sauce_details;
+                    }
+                }
+            }
+            
+            // Store processed customizations properly
+            if (!empty($item_customizations)) {
+                $processed_customizations[$item_id] = json_encode($item_customizations, JSON_UNESCAPED_UNICODE);
             }
         }
     }
 
     if ($table_id >= 1 && $table_id <= get_table_count() && !empty($items)) {
-        $order_id = create_order($table_id, $items, $processed_customizations, $processed_sauces);
+        $order_id = create_order($table_id, $items, $processed_customizations);
         $_SESSION['order_success'] = "Order #$order_id created successfully for Table $table_id";
     } else {
         $_SESSION['order_error'] = "Invalid table number or no items selected.";
@@ -551,7 +585,7 @@ function rebuildSauceSelectionUI(itemId, quantity, sauceCount) {
         if (quantity > 1) {
             const groupTitle = document.createElement('div');
             groupTitle.className = 'sauce-item-title';
-            groupTitle.textContent = `${i + 1}. Ä"diens:`;
+            groupTitle.textContent = `${i + 1}. ēdiens:`;
             itemGroup.appendChild(groupTitle);
         }
         
