@@ -1,6 +1,38 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
 
+// Sauce configuration - same as menu.php
+$sauce_config = [
+    // By category - applies to all items in that category
+    'categories' => [
+        'zep cep' => 1,        // fries get 1 sauce
+        'uzkodas' => 3,        // appetizers get 3 sauces
+    ],
+    // By specific item name - overrides category settings
+    'items' => [
+        'maizes nūjiņas' => 0,            // maizes nūjiņas get no sauce
+    ]
+];
+
+// Function to get sauce count using the configuration
+function get_sauce_count_from_config($item_name, $category_name, $config) {
+    $item_lower = strtolower(trim($item_name ?? ''));
+    $category_lower = strtolower(trim($category_name ?? ''));
+    
+    // First check if this specific item has a custom sauce count
+    if (isset($config['items'][$item_lower])) {
+        return $config['items'][$item_lower];
+    }
+    
+    // Otherwise use the category default
+    return $config['categories'][$category_lower] ?? 0;
+}
+
+// Helper function for backward compatibility
+function get_sauce_count($item_name, $category_name, $config) {
+    return get_sauce_count_from_config($item_name, $category_name, $config);
+}
+
 // Handle mark as paid - must be at the top before any output
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_paid'])) {
     $oid = intval($_POST['mark_paid']);
@@ -23,9 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_register_order
     $table_id = isset($_POST['table_id']) ? intval($_POST['table_id']) : 0;
     $qtys = isset($_POST['qty']) ? $_POST['qty'] : [];
     $customizations = isset($_POST['customizations']) ? $_POST['customizations'] : [];
+    $sauces = isset($_POST['sauces']) ? $_POST['sauces'] : [];
 
     $items = [];
     $processed_customizations = [];
+    $processed_sauces = [];
 
     foreach ($qtys as $item_id => $qty) {
         $qty = intval($qty);
@@ -36,11 +70,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_register_order
             if (isset($customizations[$item_id]) && !empty($customizations[$item_id])) {
                 $processed_customizations[$item_id] = $customizations[$item_id];
             }
+            
+            // Process sauces for this item
+            if (isset($sauces[$item_id]) && !empty($sauces[$item_id])) {
+                $processed_sauces[$item_id] = $sauces[$item_id];
+            }
         }
     }
 
     if ($table_id >= 1 && $table_id <= get_table_count() && !empty($items)) {
-        $order_id = create_order($table_id, $items, $processed_customizations);
+        $order_id = create_order($table_id, $items, $processed_customizations, $processed_sauces);
         $_SESSION['order_success'] = "Order #$order_id created successfully for Table $table_id";
     } else {
         $_SESSION['order_error'] = "Invalid table number or no items selected.";
@@ -91,6 +130,14 @@ $orders = array_filter($orders, function($order) {
 });
 $menu = get_menu_items();
 
+// Get sauces for main food items
+$sauces = [];
+foreach ($menu as $item) {
+    if (strtolower(trim($item['category_name'] ?? '')) === 'mērces') {
+        $sauces[] = $item;
+    }
+}
+
 // Group orders by table and calculate table totals
 $tables = [];
 $table_totals = [];
@@ -121,6 +168,11 @@ foreach ($menu as $item) {
 // Get available tables
 $table_list = get_table_list();
 $max_tables = get_table_count();
+
+// Updated function to check if item needs sauce options
+function is_main_food_item($item_name, $category_name, $config) {
+    return get_sauce_count_from_config($item_name, $category_name, $config) > 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -131,226 +183,6 @@ $max_tables = get_table_count();
     <link rel="stylesheet" type="text/css" href="assets/css/register.css?v=<?php echo time(); ?>">
     <!-- Bootstrap Icons CDN for filter icon -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <style>
-    /* New Order Notification Styles */
-    .new-order-notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, #f39c12, #e67e22);
-        color: white;
-        padding: 15px 20px;
-        border-radius: 12px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        display: none;
-        z-index: 1000;
-        animation: slideInFromRight 0.5s ease-out;
-        min-width: 300px;
-        border-left: 4px solid #d35400;
-    }
-
-    .new-order-notification.show {
-        display: block;
-    }
-
-    .new-order-notification .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .new-order-notification .notification-icon {
-        font-size: 24px;
-        animation: pulse 2s infinite;
-    }
-
-    .new-order-notification .notification-text h4 {
-        margin: 0 0 5px 0;
-        font-size: 16px;
-        font-weight: bold;
-    }
-
-    .new-order-notification .notification-text p {
-        margin: 0;
-        font-size: 14px;
-        opacity: 0.9;
-    }
-
-    .new-order-notification .close-notification {
-        position: absolute;
-        top: 8px;
-        right: 10px;
-        background: none;
-        border: none;
-        color: white;
-        font-size: 18px;
-        cursor: pointer;
-        opacity: 0.7;
-        transition: opacity 0.2s;
-    }
-
-    .new-order-notification .close-notification:hover {
-        opacity: 1;
-    }
-
-    @keyframes slideInFromRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-    }
-
-    /* Enhanced order card styles for new orders */
-    .order-card.new-order {
-        border: 2px solid #f39c12;
-        background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(230, 126, 34, 0.05));
-        animation: newOrderGlow 2s infinite;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .order-card.new-order::before {
-        content: '';
-        position: absolute;
-        top: -2px;
-        left: -2px;
-        right: -2px;
-        bottom: -2px;
-        background: linear-gradient(45deg, #f39c12, #e67e22, #d35400);
-        border-radius: inherit;
-        z-index: -1;
-        animation: borderRotate 3s linear infinite;
-    }
-
-    @keyframes newOrderGlow {
-        0%, 100% {
-            box-shadow: 0 0 15px rgba(243, 156, 18, 0.3);
-        }
-        50% {
-            box-shadow: 0 0 25px rgba(243, 156, 18, 0.6);
-        }
-    }
-
-    @keyframes borderRotate {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    .new-order-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: #e74c3c;
-        color: white;
-        font-size: 10px;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-weight: bold;
-        animation: pulse 2s infinite;
-        z-index: 10;
-    }
-
-    /* Acknowledge button styles */
-    .acknowledge-btn {
-        background: #27ae60;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        cursor: pointer;
-        margin-left: 10px;
-        transition: all 0.2s;
-    }
-
-    .acknowledge-btn:hover {
-        background: #229954;
-        transform: translateY(-1px);
-    }
-
-    /* Order item customization display enhancement */
-    .customizations {
-        background: rgba(52, 152, 219, 0.1);
-        padding: 8px;
-        border-radius: 6px;
-        margin-top: 5px;
-        border-left: 3px solid #3498db;
-        font-size: 12px;
-        line-height: 1.4;
-    }
-
-    /* Table section enhancements for new orders */
-    .table-section.has-new-orders {
-        animation: tableGlow 0.7s infinite;
-    }
-
-    @keyframes tableGlow {
-        0%, 100% {
-            box-shadow: 0 0 10px rgba(14, 149, 227, 0.4);
-        }
-        50% {
-            box-shadow: 0 0 40px rgba(71, 249, 246, 0.8);
-        }
-    }
-
-    /* Table pay button styles */
-    .table-pay-btn {
-        background: linear-gradient(135deg, #27ae60, #2ecc71);
-        color: white;
-        border: none;
-        padding: 10px 16px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-    }
-
-    .table-pay-btn:hover {
-        background: linear-gradient(135deg, #229954, #27ae60);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
-    }
-
-    .table-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        padding: 15px;
-        background: linear-gradient(135deg, #2c3e50, #404041ff);
-        border-radius: 12px;
-        border: 2px solid #0ed9f4ff;
-    }
-
-    .table-info {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .table-number {
-        font-size: 1.5em;
-        font-weight: bold;
-        color: #2c3e50;
-    }
-
-    .table-total {
-        font-size: 1.2em;
-        color: #27ae60;
-        font-weight: bold;
-    }
-    </style>
 </head>
 <body>
 <div class="container">
@@ -518,7 +350,10 @@ $max_tables = get_table_count();
             <?php foreach ($categories as $category_name => $category_items): ?>
                 <h3 class="category-title"><?php echo htmlspecialchars($category_name); ?></h3>
                 <div class="menu-grid">
-                    <?php foreach ($category_items as $item): ?>
+                    <?php foreach ($category_items as $item): 
+                        $sauce_count = get_sauce_count($item['name'], $item['category_name'], $sauce_config);
+                        $is_main_food = $sauce_count > 0;
+                    ?>
                     <div class="menu-item">
                         <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
                         <div class="item-description"><?php echo htmlspecialchars($item['description']); ?></div>
@@ -534,7 +369,9 @@ $max_tables = get_table_count();
                                        min="0" 
                                        max="10" 
                                        value="0"
-                                       onchange="updateOrderSummary()">
+                                       onchange="updateOrderSummary()"
+                                       data-is-main-food="<?php echo $is_main_food ? '1' : '0'; ?>"
+                                       data-sauce-count="<?php echo $sauce_count; ?>">
                                 <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
                             </div>
                             <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
@@ -542,8 +379,19 @@ $max_tables = get_table_count();
                             </button>
                         </div>
                         
+                        <!-- Sauce selection for main food items -->
+                        <?php if ($is_main_food): ?>
+                        <div class="sauce-instances" id="sauceInstances_<?php echo $item['id']; ?>" style="display: none;">
+                            <div class="sauce-instances-title">Mērces izvēle:</div>
+                            <div id="sauceInstancesContainer_<?php echo $item['id']; ?>"></div>
+                        </div>
+                        <?php endif; ?>
+                        
                         <!-- Hidden customization fields -->
                         <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
+                        <?php if ($is_main_food): ?>
+                        <input type="hidden" name="sauces[<?php echo $item['id']; ?>]" id="sauces_<?php echo $item['id']; ?>" value="">
+                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -553,7 +401,10 @@ $max_tables = get_table_count();
             <?php if (!empty($uncategorized)): ?>
                 <h3 class="category-title">Citi ēdieni</h3>
                 <div class="menu-grid">
-                    <?php foreach ($uncategorized as $item): ?>
+                    <?php foreach ($uncategorized as $item): 
+                        $sauce_count = get_sauce_count($item['name'], '', $sauce_config);
+                        $is_main_food = $sauce_count > 0;
+                    ?>
                     <div class="menu-item">
                         <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
                         <div class="item-description"><?php echo htmlspecialchars($item['description']); ?></div>
@@ -569,7 +420,9 @@ $max_tables = get_table_count();
                                        min="0" 
                                        max="10" 
                                        value="0"
-                                       onchange="updateOrderSummary()">
+                                       onchange="updateOrderSummary()"
+                                       data-is-main-food="<?php echo $is_main_food ? '1' : '0'; ?>"
+                                       data-sauce-count="<?php echo $sauce_count; ?>">
                                 <button type="button" class="quantity-btn" onclick="changeQuantity(<?php echo $item['id']; ?>, 1)">+</button>
                             </div>
                             <button type="button" class="customize-btn" id="customize_<?php echo $item['id']; ?>" onclick="openCustomize(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['name']); ?>')">
@@ -577,8 +430,19 @@ $max_tables = get_table_count();
                             </button>
                         </div>
                         
+                        <!-- Sauce selection for main food items -->
+                        <?php if ($is_main_food): ?>
+                        <div class="sauce-instances" id="sauceInstances_<?php echo $item['id']; ?>" style="display: none;">
+                            <div class="sauce-instances-title">Mērces izvēle:</div>
+                            <div id="sauceInstancesContainer_<?php echo $item['id']; ?>"></div>
+                        </div>
+                        <?php endif; ?>
+                        
                         <!-- Hidden customization fields -->
                         <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
+                        <?php if ($is_main_food): ?>
+                        <input type="hidden" name="sauces[<?php echo $item['id']; ?>]" id="sauces_<?php echo $item['id']; ?>" value="">
+                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -624,17 +488,124 @@ $max_tables = get_table_count();
 const menuData = <?php echo json_encode($menu); ?>;
 const maxTables = <?php echo $max_tables; ?>;
 
+// Available sauces from PHP
+const availableSauces = <?php echo json_encode($sauces); ?>;
+
 // AJAX polling variables
 let pollInterval;
 let isModalOpen = false;
 let currentTableFilter = 'all'; // Track current filter
 let lastOrderIds = new Set(); // Track order IDs to detect new ones
 
-// Customization variables (added from menu.php)
+// Customization variables
 let currentItemId = null;
 let customizations = {};
+let sauceSelections = {}; // NEW: Added sauce selections tracking
 
+// SAUCE SYSTEM FUNCTIONS (Added from menu.php)
+function updateSauceInstances(itemId, newQuantity, oldQuantity) {
+    const input = document.getElementById('qty_' + itemId);
+    const sauceInstancesDiv = document.getElementById('sauceInstances_' + itemId);
+    const container = document.getElementById('sauceInstancesContainer_' + itemId);
+    
+    // Get sauce count from data attribute
+    const sauceCount = parseInt(input.dataset.sauceCount) || 1;
+    
+    if (newQuantity > 0) {
+        sauceInstancesDiv.style.display = 'block';
+        
+        if (!sauceSelections[itemId]) {
+            sauceSelections[itemId] = [];
+        }
+        
+        // Each quantity gets its own set of sauces
+        const totalSauceInstances = newQuantity * sauceCount;
+        
+        // Adjust array length
+        if (totalSauceInstances > sauceSelections[itemId].length) {
+            for (let i = sauceSelections[itemId].length; i < totalSauceInstances; i++) {
+                sauceSelections[itemId][i] = '';
+            }
+        } else if (totalSauceInstances < sauceSelections[itemId].length) {
+            sauceSelections[itemId] = sauceSelections[itemId].slice(0, totalSauceInstances);
+        }
+        
+        rebuildSauceSelectionUI(itemId, newQuantity, sauceCount);
+    } else {
+        sauceInstancesDiv.style.display = 'none';
+        sauceSelections[itemId] = [];
+    }
+    
+    updateSauceHiddenField(itemId);
+}
 
+function rebuildSauceSelectionUI(itemId, quantity, sauceCount) {
+    const container = document.getElementById('sauceInstancesContainer_' + itemId);
+    container.innerHTML = '';
+    
+    for (let i = 0; i < quantity; i++) {
+        // Create a group for each item quantity
+        const itemGroup = document.createElement('div');
+        itemGroup.className = 'sauce-item-group';
+        
+        if (quantity > 1) {
+            const groupTitle = document.createElement('div');
+            groupTitle.className = 'sauce-item-title';
+            groupTitle.textContent = `${i + 1}. Ä"diens:`;
+            itemGroup.appendChild(groupTitle);
+        }
+        
+        // Create sauce selectors for this item
+        for (let j = 0; j < sauceCount; j++) {
+            const sauceIndex = i * sauceCount + j;
+            
+            const instanceDiv = document.createElement('div');
+            instanceDiv.className = 'sauce-instance';
+            
+            const label = document.createElement('div');
+            label.className = 'sauce-instance-label';
+            label.textContent = `${j + 1}. mērce:`;
+            
+            const select = document.createElement('select');
+            select.className = 'sauce-select';
+            select.onchange = function() {
+                sauceSelections[itemId][sauceIndex] = this.value;
+                updateSauceHiddenField(itemId);
+                updateOrderSummary();
+            };
+            
+            // Add "No sauce" option
+            const noSauceOption = document.createElement('option');
+            noSauceOption.value = '';
+            noSauceOption.textContent = 'Bez mērces';
+            select.appendChild(noSauceOption);
+            
+            // Add sauce options
+            availableSauces.forEach(sauce => {
+                const option = document.createElement('option');
+                option.value = sauce.id;
+                option.textContent = sauce.name;
+                if (sauceSelections[itemId][sauceIndex] == sauce.id) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            
+            instanceDiv.appendChild(label);
+            instanceDiv.appendChild(select);
+            itemGroup.appendChild(instanceDiv);
+        }
+        
+        container.appendChild(itemGroup);
+    }
+}
+
+function updateSauceHiddenField(itemId) {
+    const hiddenField = document.getElementById('sauces_' + itemId);
+    if (hiddenField) {
+        hiddenField.value = JSON.stringify(sauceSelections[itemId] || []);
+    }
+}
 
 function showNewOrderNotification(tableId, orderId) {
     const notification = document.getElementById('newOrderNotification');
@@ -891,11 +862,16 @@ function closeOrderModal() {
     document.body.style.overflow = 'auto';
     // Reset form
     document.getElementById('newOrderForm').reset();
-    // Reset customizations
+    // Reset customizations and sauce selections
     customizations = {};
+    sauceSelections = {};
     document.querySelectorAll('.customize-btn').forEach(btn => {
         btn.classList.remove('has-customizations');
         btn.textContent = 'Pielāgot';
+    });
+    // Hide all sauce instances
+    document.querySelectorAll('.sauce-instances').forEach(div => {
+        div.style.display = 'none';
     });
     updateOrderSummary();
     isModalOpen = false;
@@ -1149,14 +1125,22 @@ function stopPolling() {
     }
 }
 
-// EXISTING functions (keep these as they were)
+// UPDATED changeQuantity function to handle sauce instances
 function changeQuantity(itemId, change) {
     const input = document.getElementById('qty_' + itemId);
     const newValue = Math.max(0, Math.min(10, parseInt(input.value || 0) + change));
+    const oldValue = parseInt(input.value || 0);
     input.value = newValue;
+    
+    // Handle sauce instances for main food items
+    if (input.dataset.isMainFood === '1') {
+        updateSauceInstances(itemId, newValue, oldValue);
+    }
+    
     updateOrderSummary();
 }
 
+// UPDATED updateOrderSummary function to include sauce information
 function updateOrderSummary() {
     const quantities = document.querySelectorAll('.quantity-input');
     const summaryDiv = document.getElementById('orderSummary');
@@ -1181,7 +1165,40 @@ function updateOrderSummary() {
                 // Add customization info if exists
                 let customizationInfo = '';
                 if (customizations[itemId] && Object.keys(customizations[itemId]).length > 0) {
-                    customizationInfo = '<br><small style="color: #e67e22;">✓ Pielāgots</small>';
+                    customizationInfo += '<br><small style="color: #e67e22;">✓ Pielāgots</small>';
+                }
+                
+                // Add sauce info for main food items
+                if (input.dataset.isMainFood === '1' && sauceSelections[itemId]) {
+                    const sauceCount = parseInt(input.dataset.sauceCount) || 1;
+                    const sauceInfo = [];
+                    
+                    for (let i = 0; i < quantity; i++) {
+                        const itemSauces = [];
+                        for (let j = 0; j < sauceCount; j++) {
+                            const sauceIndex = i * sauceCount + j;
+                            const sauceId = sauceSelections[itemId][sauceIndex];
+                            
+                            if (sauceId) {
+                                const sauce = availableSauces.find(s => s.id == sauceId);
+                                if (sauce) {
+                                    itemSauces.push(sauce.name);
+                                }
+                            } else {
+                                itemSauces.push('Bez mērces');
+                            }
+                        }
+                        
+                        if (quantity > 1) {
+                            sauceInfo.push(`${i + 1}: ${itemSauces.join(', ')}`);
+                        } else {
+                            sauceInfo.push(itemSauces.join(', '));
+                        }
+                    }
+                    
+                    if (sauceInfo.length > 0) {
+                        customizationInfo += '<br><small style="color: #27ae60;"> ' + sauceInfo.join(' | ') + '</small>';
+                    }
                 }
                 
                 summaryHTML += `
