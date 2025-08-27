@@ -335,7 +335,8 @@ function get_drink_categories() {
         'dzērieni',                    // Current drinks category
         'bezalkoholiskie dzērieni',    // Non-alcoholic drinks
         'alkoholiskie dzērieni',        // Alcoholic drinks
-        'bāra uzkodas'                  // Bar snacks
+        'bāra uzkodas',                  // Bar snacks
+        'bezalkoholiskie kokteiļi'   // Non-alcoholic cocktails
         // Add more drink categories here as needed
     ];
 }
