@@ -166,7 +166,7 @@ $menu = get_menu_items();
 // Get sauces for main food items
 $sauces = [];
 foreach ($menu as $item) {
-    if (strtolower(trim($item['category_name'] ?? '')) === 'mērces') {
+    if (strtolower(trim($item['category_name'] ?? '')) === 'mērcītes') {
         $sauces[] = $item;
     }
 }
