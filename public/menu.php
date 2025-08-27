@@ -70,7 +70,7 @@ foreach ($categories as $cat_name => $items) {
     if ($cat_lower === 'alkoholiskie dzērieni') {
         // Alcoholic drinks go last of all
         $alcoholic_categories[$cat_name] = $items;
-    } elseif (in_array($cat_lower, ['dzērieni', 'bezalkoholiskie dzērieni', 'bāra uzkodas'])) {
+    } elseif (in_array($cat_lower, ['dzērieni', 'bezalkoholiskie dzērieni','bezalkoholiskie kokteiļi', 'bāra uzkodas'])) {
         // Other drink categories go after food but before alcoholic
         $drink_categories[$cat_name] = $items;
     } else {
