@@ -7,20 +7,25 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #2a3441 0%, #1e2936 100%);
+    /* Background is now set dynamically via PHP in menu.php - do not override here */
+    /* background: linear-gradient(135deg, #2a3441 0%, #1e2936 100%); */
     min-height: 100vh;
-    padding: 20px 0;
+    padding: 20px 40px; /* More horizontal padding to show more background */
     color: #e2e8f0;
 }
 
 .container {
     max-width: 800px;
     margin: 0 auto;
-    background: #374151;
+    background: rgba(55, 65, 81, 0.3); /* Very transparent - allows more background to show through */
     border-radius: 16px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2); /* Subtle white border for separation */
+    box-shadow: 
+        0 0 20px rgba(0, 0, 0, 0.5),
+        0 0 40px rgba(255, 255, 255, 0.3),
+        inset 0 0 20px rgba(255, 255, 255, 0.1); /* Smaller outer glow + white glow + inner glow */
     overflow: hidden;
-    border: 1px solid #4b5563;
+    backdrop-filter: blur(2px); /* Slight blur effect for better readability */
 }
 
 .header {
@@ -44,7 +49,7 @@ body {
 
 .menu-content {
     padding: 30px;
-    background: #374151;
+    background: rgba(55, 65, 81, 0.25); /* Very transparent for better background visibility */
 }
 
 .category-section {

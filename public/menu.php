@@ -49,6 +49,9 @@ if ($table_id < 1 || $table_id > get_table_count()) {
 }
 $menu = get_menu_items();
 
+// Get background settings
+$bg_settings = get_menu_background_settings();
+
 // Get sauces for main food items
 $sauces = [];
 $sauce_category_variants = ['mērcītes', 'mercites', 'mērces', 'merces', 'sauces'];
@@ -112,9 +115,167 @@ function is_main_food_item($item_name, $category_name, $config) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Table <?php echo $table_id; ?> - Menu</title>
-    <link rel="stylesheet" type="text/css" href="assets/css/menu.css?v=<?php echo time(); ?>">
     <!-- Bootstrap Icons CDN for filter icon -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- Dynamic Background Styles - MUST come before menu.css to override -->
+    <style>
+        body {
+            background-color: <?php echo htmlspecialchars($bg_settings['background_color']); ?> !important;
+            padding: 20px 40px !important; /* More horizontal padding to show more background */
+            <?php if (!empty($bg_settings['background_image'])): ?>
+            background-image: url('<?php echo htmlspecialchars($bg_settings['background_image']); ?>') !important;
+            background-repeat: <?php echo htmlspecialchars($bg_settings['background_repeat']); ?> !important;
+            <?php 
+            // For repeating patterns, use auto size to show the resized 100x100px tiles
+            // For non-repeating, use the admin's chosen size
+            $repeat_setting = strtolower(trim($bg_settings['background_repeat'] ?? ''));
+            if (in_array($repeat_setting, ['repeat', 'repeat-x', 'repeat-y'])) {
+                // When repeating, use auto to show the actual resized image size (100x100px)
+                echo "background-size: auto !important;";
+            } else {
+                // When not repeating, use admin's chosen size
+                echo "background-size: " . htmlspecialchars($bg_settings['background_size']) . " !important;";
+            }
+            ?>
+            background-position: <?php echo htmlspecialchars($bg_settings['background_position']); ?> !important;
+            background-attachment: fixed !important;
+            <?php else: ?>
+            background-image: none !important;
+            <?php endif; ?>
+        }
+        
+        /* Make container even more transparent with smaller white glow effect for separation */
+        .container {
+            background: rgba(55, 65, 81, 0.3) !important; /* Very transparent */
+            border: 2px solid rgba(255, 255, 255, 0.2) !important; /* Subtle white border */
+            box-shadow: 
+                0 0 20px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(255, 255, 255, 0.3),
+                inset 0 0 20px rgba(255, 255, 255, 0.1) !important; /* Smaller outer glow + white glow + inner glow */
+        }
+        
+        .menu-content {
+            background: rgba(55, 65, 81, 0.25) !important; /* Very transparent */
+        }
+        
+        /* Mobile optimization */
+        @media (max-width: 768px) {
+            body {
+                <?php if (!empty($bg_settings['background_image'])): ?>
+                background-attachment: fixed !important;
+                background-size: auto !important;
+                background-position: center center !important;
+                background-repeat: <?php echo htmlspecialchars($bg_settings['background_repeat']); ?> !important;
+                <?php endif; ?>
+            }
+            
+            /* Make container more transparent on mobile with glow effect */
+            body {
+                padding: 20px 20px !important; /* More horizontal padding on mobile */
+            }
+            
+            .container {
+                background: rgba(55, 65, 81, 0.3) !important; /* Very transparent */
+                border: 2px solid rgba(255, 255, 255, 0.2) !important;
+                box-shadow: 
+                    0 0 15px rgba(0, 0, 0, 0.4),
+                    0 0 30px rgba(255, 255, 255, 0.25),
+                    inset 0 0 15px rgba(255, 255, 255, 0.1) !important;
+            }
+            
+            .menu-content {
+                background: rgba(55, 65, 81, 0.25) !important; /* Very transparent */
+            }
+        }
+        
+        /* Medium tablets and large phones */
+        @media (max-width: 600px) {
+            body {
+                <?php if (!empty($bg_settings['background_image'])): ?>
+                background-attachment: fixed !important;
+                background-size: auto !important;
+                background-position: center center !important;
+                background-repeat: <?php echo htmlspecialchars($bg_settings['background_repeat']); ?> !important;
+                <?php endif; ?>
+            }
+            
+            body {
+                padding: 20px 15px !important; /* More horizontal padding on medium screens */
+            }
+            
+            .container {
+                background: rgba(55, 65, 81, 0.3) !important; /* Very transparent */
+                border: 2px solid rgba(255, 255, 255, 0.2) !important;
+                box-shadow: 
+                    0 0 15px rgba(0, 0, 0, 0.4),
+                    0 0 30px rgba(255, 255, 255, 0.25),
+                    inset 0 0 15px rgba(255, 255, 255, 0.1) !important;
+            }
+            
+            .menu-content {
+                background: rgba(55, 65, 81, 0.25) !important; /* Very transparent */
+            }
+        }
+        
+        /* Small phones */
+        @media (max-width: 480px) {
+            body {
+                <?php if (!empty($bg_settings['background_image'])): ?>
+                background-attachment: fixed !important;
+                background-size: auto !important;
+                background-position: center center !important;
+                background-repeat: <?php echo htmlspecialchars($bg_settings['background_repeat']); ?> !important;
+                <?php endif; ?>
+            }
+            
+            body {
+                padding: 20px 15px !important; /* More horizontal padding on small phones */
+            }
+            
+            .container {
+                background: rgba(55, 65, 81, 0.3) !important; /* Very transparent */
+                border: 2px solid rgba(255, 255, 255, 0.2) !important;
+                box-shadow: 
+                    0 0 12px rgba(0, 0, 0, 0.4),
+                    0 0 25px rgba(255, 255, 255, 0.2),
+                    inset 0 0 12px rgba(255, 255, 255, 0.1) !important;
+            }
+            
+            .menu-content {
+                background: rgba(55, 65, 81, 0.25) !important; /* Very transparent */
+            }
+        }
+        
+        /* Very small phones */
+        @media (max-width: 360px) {
+            body {
+                <?php if (!empty($bg_settings['background_image'])): ?>
+                background-attachment: fixed !important;
+                background-size: auto !important;
+                background-position: center center !important;
+                background-repeat: <?php echo htmlspecialchars($bg_settings['background_repeat']); ?> !important;
+                <?php endif; ?>
+            }
+            
+            body {
+                padding: 20px 10px !important; /* More horizontal padding on very small phones */
+            }
+            
+            .container {
+                background: rgba(55, 65, 81, 0.3) !important; /* Very transparent */
+                border: 2px solid rgba(255, 255, 255, 0.2) !important;
+                box-shadow: 
+                    0 0 12px rgba(0, 0, 0, 0.4),
+                    0 0 25px rgba(255, 255, 255, 0.2),
+                    inset 0 0 12px rgba(255, 255, 255, 0.1) !important;
+            }
+            
+            .menu-content {
+                background: rgba(55, 65, 81, 0.25) !important; /* Very transparent */
+            }
+        }
+    </style>
+    <link rel="stylesheet" type="text/css" href="assets/css/menu.css?v=<?php echo time(); ?>">
     <!-- Your existing styles remain the same -->
     <style>
         /* All your existing CSS styles remain unchanged */

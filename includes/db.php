@@ -334,6 +334,164 @@ function update_restaurant_setting($key, $value) {
     return false;
 }
 
+// Background customization functions
+function get_menu_background_settings() {
+    $conn = db_connect();
+    if ($conn) {
+        // Check if background_settings table exists, if not create it
+        $table_check = $conn->query("SHOW TABLES LIKE 'menu_background_settings'");
+        if (!$table_check || $table_check->num_rows === 0) {
+            $conn->query("CREATE TABLE IF NOT EXISTS menu_background_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                background_color VARCHAR(20) DEFAULT '#f8f8f8',
+                background_image VARCHAR(255) DEFAULT NULL,
+                background_repeat VARCHAR(20) DEFAULT 'no-repeat',
+                background_size VARCHAR(20) DEFAULT 'cover',
+                background_position VARCHAR(50) DEFAULT 'center center',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            // Insert default settings
+            $conn->query("INSERT INTO menu_background_settings (id) VALUES (1) ON DUPLICATE KEY UPDATE id=1");
+        }
+        
+        $result = $conn->query("SELECT * FROM menu_background_settings WHERE id = 1 LIMIT 1");
+        if ($result && $result->num_rows > 0) {
+            $settings = $result->fetch_assoc();
+            $conn->close();
+            return $settings;
+        }
+        $conn->close();
+    }
+    
+    // Return defaults if no settings found
+    return [
+        'background_color' => '#f8f8f8',
+        'background_image' => null,
+        'background_repeat' => 'no-repeat',
+        'background_size' => 'cover',
+        'background_position' => 'center center'
+    ];
+}
+
+function update_menu_background_settings($settings) {
+    $conn = db_connect();
+    if (!$conn) {
+        error_log("Database connection failed in update_menu_background_settings");
+        return false;
+    }
+    
+    // Ensure table exists with proper structure
+    $table_check = $conn->query("SHOW TABLES LIKE 'menu_background_settings'");
+    if (!$table_check || $table_check->num_rows === 0) {
+        $create_sql = "CREATE TABLE IF NOT EXISTS menu_background_settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            background_color VARCHAR(20) DEFAULT '#f8f8f8',
+            background_image VARCHAR(255) DEFAULT NULL,
+            background_repeat VARCHAR(20) DEFAULT 'no-repeat',
+            background_size VARCHAR(20) DEFAULT 'cover',
+            background_position VARCHAR(50) DEFAULT 'center center',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )";
+        if (!$conn->query($create_sql)) {
+            error_log("Failed to create table: " . $conn->error);
+            $conn->close();
+            return false;
+        }
+    } else {
+        // Check if PRIMARY KEY exists on id
+        $key_check = $conn->query("SHOW KEYS FROM menu_background_settings WHERE Key_name = 'PRIMARY'");
+        if (!$key_check || $key_check->num_rows === 0) {
+            // Add PRIMARY KEY if missing
+            $conn->query("ALTER TABLE menu_background_settings ADD PRIMARY KEY (id)");
+        }
+    }
+    
+    $color = isset($settings['background_color']) ? $conn->real_escape_string($settings['background_color']) : '#f8f8f8';
+    $repeat = isset($settings['background_repeat']) ? $conn->real_escape_string($settings['background_repeat']) : 'no-repeat';
+    $size = isset($settings['background_size']) ? $conn->real_escape_string($settings['background_size']) : 'cover';
+    $position = isset($settings['background_position']) ? $conn->real_escape_string($settings['background_position']) : 'center center';
+    
+    // Handle image - can be null, empty string, or a path
+    if (isset($settings['background_image']) && $settings['background_image'] !== null && $settings['background_image'] !== '') {
+        $image = $conn->real_escape_string($settings['background_image']);
+        $image_sql = "'$image'";
+    } else {
+        $image_sql = 'NULL';
+    }
+    
+    // Check if row exists first
+    $check_sql = "SELECT id FROM menu_background_settings WHERE id = 1";
+    $check_result = $conn->query($check_sql);
+    $row_exists = $check_result && $check_result->num_rows > 0;
+    
+    if ($row_exists) {
+        // Update existing record
+        $update_sql = "UPDATE menu_background_settings SET 
+            background_color='$color', 
+            background_image=$image_sql, 
+            background_repeat='$repeat', 
+            background_size='$size', 
+            background_position='$position'
+            WHERE id = 1";
+        
+        $result = $conn->query($update_sql);
+        $sql_attempted = $update_sql;
+        $affected = $conn->affected_rows;
+        
+        if (!$result) {
+            error_log("Background settings UPDATE failed: " . $conn->error);
+            error_log("SQL: " . $update_sql);
+            $conn->close();
+            return false;
+        }
+        
+        if ($affected === 0) {
+            error_log("WARNING: UPDATE query succeeded but 0 rows affected! This means the row exists but values didn't change OR WHERE clause didn't match.");
+            // Even if 0 rows affected, if query succeeded, we consider it OK (values might be the same)
+            $result = true;
+        }
+    } else {
+        // Insert new record
+        $insert_sql = "INSERT INTO menu_background_settings (id, background_color, background_image, background_repeat, background_size, background_position) 
+                VALUES (1, '$color', $image_sql, '$repeat', '$size', '$position')";
+        $result = $conn->query($insert_sql);
+        $sql_attempted = $insert_sql;
+        $affected = $conn->affected_rows;
+        
+        if (!$result) {
+            error_log("Background settings INSERT failed: " . $conn->error);
+            error_log("SQL: " . $insert_sql);
+            $conn->close();
+            return false;
+        }
+    }
+    
+    error_log("Background settings saved successfully. Affected rows: " . ($affected ?? 0));
+    error_log("SQL used: " . $sql_attempted);
+    
+    // Verify by reading back
+    $verify_sql = "SELECT * FROM menu_background_settings WHERE id = 1";
+    $verify_result = $conn->query($verify_sql);
+    if ($verify_result && $verify_result->num_rows > 0) {
+        $verify_row = $verify_result->fetch_assoc();
+        error_log("Verified saved values: " . print_r($verify_row, true));
+    }
+    
+    $conn->close();
+    return $result;
+}
+
+function reset_menu_background_to_default() {
+    $defaults = [
+        'background_color' => '#f8f8f8',
+        'background_image' => null,
+        'background_repeat' => 'no-repeat',
+        'background_size' => 'cover',
+        'background_position' => 'center center'
+    ];
+    return update_menu_background_settings($defaults);
+}
+
 function get_table_count() {
     return intval(get_restaurant_setting('table_count', 3));
 }
