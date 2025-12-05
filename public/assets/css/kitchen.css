@@ -141,8 +141,8 @@
             border-radius: 6px;
             padding: 12px;
             margin-top: 10px;
-            font-size: 0.9em;
-            line-height: 1.4;
+            font-size: 0.95em;
+            line-height: 1.6;
         }
         
         .customizations:empty {
@@ -151,6 +151,16 @@
         
         .customizations strong {
             color: #e67e22;
+            font-size: 1.05em;
+        }
+        
+        .customizations div {
+            margin: 4px 0;
+        }
+        
+        .customizations span {
+            display: inline-block;
+            margin: 2px;
         }
         
         .empty { 

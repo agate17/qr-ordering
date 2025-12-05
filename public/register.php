@@ -32,6 +32,16 @@ function get_sauce_count($item_name, $category_name, $config) {
     return get_sauce_count_from_config($item_name, $category_name, $config);
 }
 
+function get_item_sauce_count($item, $config) {
+    if (isset($item['included_sauces'])) {
+        $count = intval($item['included_sauces']);
+        if ($count > 0) {
+            return $count;
+        }
+    }
+    return get_sauce_count_from_config($item['name'], $item['category_name'], $config);
+}
+
 // Handle mark as paid - must be at the top before any output
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_paid'])) {
     $oid = intval($_POST['mark_paid']);
@@ -165,8 +175,10 @@ $menu = get_menu_items();
 
 // Get sauces for main food items
 $sauces = [];
+$sauce_category_variants = ['mērcītes', 'mercites', 'mērces', 'merces', 'sauces'];
 foreach ($menu as $item) {
-    if (strtolower(trim($item['category_name'] ?? '')) === 'mērcītes') {
+    $cat_lower = strtolower(trim($item['category_name'] ?? ''));
+    if (in_array($cat_lower, $sauce_category_variants)) {
         $sauces[] = $item;
     }
 }
@@ -384,7 +396,7 @@ function is_main_food_item($item_name, $category_name, $config) {
                 <h3 class="category-title"><?php echo htmlspecialchars($category_name); ?></h3>
                 <div class="menu-grid">
                     <?php foreach ($category_items as $item): 
-                        $sauce_count = get_sauce_count($item['name'], $item['category_name'], $sauce_config);
+                        $sauce_count = get_item_sauce_count($item, $sauce_config);
                         $is_main_food = $sauce_count > 0;
                     ?>
                     <div class="menu-item">
@@ -435,7 +447,7 @@ function is_main_food_item($item_name, $category_name, $config) {
                 <h3 class="category-title">Citi ēdieni</h3>
                 <div class="menu-grid">
                     <?php foreach ($uncategorized as $item): 
-                        $sauce_count = get_sauce_count($item['name'], '', $sauce_config);
+                        $sauce_count = get_item_sauce_count($item, $sauce_config);
                         $is_main_food = $sauce_count > 0;
                     ?>
                     <div class="menu-item">

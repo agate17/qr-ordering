@@ -10,6 +10,7 @@ $table_id = isset($_POST['table_id']) ? intval($_POST['table_id']) : 0;
 $qtys = isset($_POST['qty']) ? $_POST['qty'] : [];
 $customizations = isset($_POST['customizations']) ? $_POST['customizations'] : [];
 $sauces = isset($_POST['sauces']) ? $_POST['sauces'] : [];
+$sizes = isset($_POST['sizes']) ? $_POST['sizes'] : [];
 
 $items = [];
 $processed_customizations = [];
@@ -57,6 +58,14 @@ foreach ($qtys as $item_id => $qty) {
                 if (!empty($sauce_details)) {
                     $item_customizations['sauces'] = $sauce_details;
                 }
+            }
+        }
+        
+        // Add size information if exists
+        if (isset($sizes[$item_id]) && !empty($sizes[$item_id])) {
+            $size_data = json_decode($sizes[$item_id], true);
+            if (is_array($size_data) && !empty($size_data)) {
+                $item_customizations['sizes'] = $size_data;
             }
         }
         

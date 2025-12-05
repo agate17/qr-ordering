@@ -25,27 +25,27 @@ $tables = get_table_list();
         <div class="section-title">klientu ēdienkartes</div>
         <div class="links">
             <?php foreach ($tables as $table_id): ?>
-                <a href="menu.php?table=<?php echo $table_id; ?>">galds <?php echo $table_id; ?> ēdienkarte</a>
+                <a href="menu.php?table=<?php echo $table_id; ?>" target="_blank" rel="noopener noreferrer">galds <?php echo $table_id; ?> ēdienkarte</a>
             <?php endforeach; ?>
         </div>
     </div>
     <div class="section">
         <div class="section-title">darbiniekiem:</div>
         <div class="links">
-            <a href="kitchen.php">virtuves skats</a>
-            <a href="register.php">kases skats</a>
+            <a href="kitchen.php" target="_blank" rel="noopener noreferrer">virtuves skats</a>
+            <a href="register.php" target="_blank" rel="noopener noreferrer">kases skats</a>
         </div>
     </div>
     <div class="section">
         <div class="section-title">Admin</div>
         <div class="links">
-            <a href="admin_menu.php">ēdienkaršu pārvaldība</a>
+            <a href="admin_menu.php" target="_blank" rel="noopener noreferrer">ēdienkaršu pārvaldība</a>
         </div>
     </div>
     <div class="section">
         <div class="section-title">QR kodi:</div>
         <div class="links">
-            <a href="qr-codes.php">skatīt QR kodus</a>
+            <a href="qr-codes.php" target="_blank" rel="noopener noreferrer">skatīt QR kodus</a>
         </div>
     </div>
 </div>

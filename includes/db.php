@@ -9,11 +9,11 @@ $DB_NAME = 'restaurant_demo';
 
 // --- FALLBACK DATA ---
 $MENU_ITEMS = [
-    1 => ['id' => 1, 'name' => 'Margherita Pizza', 'description' => 'Classic pizza with tomato, mozzarella, and basil.', 'price' => 8.00, 'category_name' => 'Specials', 'image_path' => NULL, 'available' => 1],
-    2 => ['id' => 2, 'name' => 'Spaghetti', 'description' => 'Spaghetti pasta with homemade tomato sauce.', 'price' => 9.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
-    3 => ['id' => 3, 'name' => 'Caesar Salad', 'description' => 'Crisp romaine lettuce with Caesar dressing.', 'price' => 7.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
-    4 => ['id' => 4, 'name' => 'Cola', 'description' => 'Chilled soft drink.', 'price' => 2.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
-    5 => ['id' => 5, 'name' => 'Water', 'description' => 'Bottled mineral water.', 'price' => 1.50, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1],
+    1 => ['id' => 1, 'name' => 'Margherita Pizza', 'description' => 'Classic pizza with tomato, mozzarella, and basil.', 'price' => 8.00, 'category_name' => 'Specials', 'image_path' => NULL, 'available' => 1, 'included_sauces' => 0],
+    2 => ['id' => 2, 'name' => 'Spaghetti', 'description' => 'Spaghetti pasta with homemade tomato sauce.', 'price' => 9.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1, 'included_sauces' => 0],
+    3 => ['id' => 3, 'name' => 'Caesar Salad', 'description' => 'Crisp romaine lettuce with Caesar dressing.', 'price' => 7.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1, 'included_sauces' => 0],
+    4 => ['id' => 4, 'name' => 'Cola', 'description' => 'Chilled soft drink.', 'price' => 2.00, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1, 'included_sauces' => 0],
+    5 => ['id' => 5, 'name' => 'Water', 'description' => 'Bottled mineral water.', 'price' => 1.50, 'category_name' => NULL, 'image_path' => NULL, 'available' => 1, 'included_sauces' => 0],
 ];
 $ORDERS = [];
 $ORDER_ITEMS = [];
@@ -266,6 +266,24 @@ function format_customizations($customization_json) {
             $formatted[] = '<strong>Īpaši:</strong> ' . htmlspecialchars($customizations['special_requests']);
         }
         
+        // Format size selections (show first, as it's more important)
+        if (!empty($customizations['sizes']) && is_array($customizations['sizes'])) {
+            $size_info = [];
+            foreach ($customizations['sizes'] as $index => $size) {
+                $instance_num = $index + 1;
+                if ($size === 'small') {
+                    $size_info[] = "<span style='background: #e8f4f8; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #2980b9;'>📏 {$instance_num}. Parastais</span>";
+                } elseif ($size === 'large') {
+                    $size_info[] = "<span style='background: #e8f4f8; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #2980b9;'>📏 {$instance_num}. Lielais</span>";
+                } else {
+                    $size_info[] = "<span style='background: #e8f4f8; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #2980b9;'>📏 {$instance_num}. " . ucfirst($size) . "</span>";
+                }
+            }
+            if (!empty($size_info)) {
+                $formatted[] = '<div style="margin: 8px 0;"><strong style="color: #2980b9; font-size: 1.05em;">Izmēri:</strong><br><div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">' . implode('', $size_info) . '</div></div>';
+            }
+        }
+        
         // Format sauce selections - Remove "priekš"
         if (!empty($customizations['sauces'])) {
             $sauce_info = [];
@@ -273,13 +291,13 @@ function format_customizations($customization_json) {
                 $instance_num = $sauce['instance'];
                 $sauce_name = $sauce['sauce_name'];
                 if ($sauce_name === 'Bez mērces') {
-                    $sauce_info[] = "{$instance_num}: <em>Bez mērces</em>";
+                    $sauce_info[] = "<span style='background: #fff5e6; padding: 4px 8px; border-radius: 4px; color: #d35400;'>{$instance_num}. <em>Bez mērces</em></span>";
                 } else {
-                    $sauce_info[] = "{$instance_num}: <strong>{$sauce_name}</strong>";
+                    $sauce_info[] = "<span style='background: #fff5e6; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #d35400;'>{$instance_num}. {$sauce_name}</span>";
                 }
             }
             if (!empty($sauce_info)) {
-                $formatted[] = '<strong style="color: #fbbf24;"> Mērces:</strong><br>' . implode('<br>', $sauce_info);
+                $formatted[] = '<div style="margin: 8px 0;"><strong style="color: #d35400; font-size: 1.05em;">🍯 Mērces:</strong><br><div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">' . implode('', $sauce_info) . '</div></div>';
             }
         }
         

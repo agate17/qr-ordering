@@ -48,6 +48,17 @@ if (empty($_SESSION['admin_logged_in'])) {
 require_once __DIR__ . '/../includes/db.php';
 $conn = db_connect();
 
+if ($conn) {
+    $columnCheck = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'included_sauces'");
+    if ($columnCheck && $columnCheck->num_rows === 0) {
+        $conn->query("ALTER TABLE menu_items ADD COLUMN included_sauces TINYINT UNSIGNED NOT NULL DEFAULT 0");
+    }
+    $columnCheck = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'size_options'");
+    if ($columnCheck && $columnCheck->num_rows === 0) {
+        $conn->query("ALTER TABLE menu_items ADD COLUMN size_options TEXT NULL");
+    }
+}
+
 // Fetch categories for dropdown
 $categories = [];
 if ($conn) {
@@ -127,6 +138,7 @@ if ($conn) {
         $category_id = !empty($_POST['category_id']) ? intval($_POST['category_id']) : 'NULL';
         $options = $conn->real_escape_string($_POST['options'] ?? '');
         $available = isset($_POST['available']) ? 1 : 0;
+        $included_sauces = isset($_POST['included_sauces']) ? max(0, min(5, intval($_POST['included_sauces']))) : 0;
         $image_path = NULL;
         // Handle image upload
         if (!empty($_FILES['image']['name'])) {
@@ -140,7 +152,7 @@ if ($conn) {
         }
         $img_sql = $image_path ? ", image_path='$image_path'" : '';
         $cat_sql = $category_id !== 'NULL' ? $category_id : 'NULL';
-        $conn->query("INSERT INTO menu_items (name, description, price, category_id, image_path, options, available) VALUES ('$name', '$description', $price, $cat_sql, " . ($image_path ? "'$image_path'" : 'NULL') . ", '$options', $available)");
+        $conn->query("INSERT INTO menu_items (name, description, price, category_id, image_path, options, available, included_sauces, size_options) VALUES ('$name', '$description', $price, $cat_sql, " . ($image_path ? "'$image_path'" : 'NULL') . ", '$options', $available, $included_sauces, $size_options_sql)");
         $feedback = 'Menu item added.';
         $feedback_type = 'success';
     }
@@ -153,6 +165,20 @@ if ($conn) {
         $category_id = !empty($_POST['category_id']) ? intval($_POST['category_id']) : 'NULL';
         $options = $conn->real_escape_string($_POST['options'] ?? '');
         $available = isset($_POST['available']) ? 1 : 0;
+        $included_sauces = isset($_POST['included_sauces']) ? max(0, min(5, intval($_POST['included_sauces']))) : 0;
+        // Handle size options
+        $size_options = null;
+        if (isset($_POST['has_sizes']) && $_POST['has_sizes'] == '1') {
+            $small_price = isset($_POST['size_small_price']) ? floatval($_POST['size_small_price']) : 0;
+            $large_price = isset($_POST['size_large_price']) ? floatval($_POST['size_large_price']) : 0;
+            if ($small_price > 0 || $large_price > 0) {
+                $size_options = json_encode([
+                    'small' => ['name' => 'Parastais', 'price' => $small_price],
+                    'large' => ['name' => 'Lielais', 'price' => $large_price]
+                ], JSON_UNESCAPED_UNICODE);
+            }
+        }
+        $size_options_sql = $size_options ? "'" . $conn->real_escape_string($size_options) . "'" : 'NULL';
         $image_path = NULL;
         // Handle image upload
         if (!empty($_FILES['image']['name'])) {
@@ -166,7 +192,7 @@ if ($conn) {
         }
         $img_sql = $image_path ? ", image_path='$image_path'" : '';
         $cat_sql = $category_id !== 'NULL' ? $category_id : 'NULL';
-        $conn->query("UPDATE menu_items SET name='$name', description='$description', price=$price, category_id=$cat_sql, options='$options', available=$available" . ($image_path ? ", image_path='$image_path'" : '') . " WHERE id=$id");
+        $conn->query("UPDATE menu_items SET name='$name', description='$description', price=$price, category_id=$cat_sql, options='$options', available=$available, included_sauces=$included_sauces, size_options=$size_options_sql" . ($image_path ? ", image_path='$image_path'" : '') . " WHERE id=$id");
         $feedback = 'Menu item updated.';
         $feedback_type = 'success';
     }
@@ -461,6 +487,29 @@ if ($conn) {
                             <?php endforeach; ?>
                         </select>
                     </label>
+                    <label>Mērču skaits (iekļauts cenā):
+                        <input type="number" name="included_sauces" value="0" min="0" max="5" step="1">
+                    </label>
+                    <p style="font-size: 0.85em; color: #6b7280; margin-top: -10px;">
+                        Norādi, cik mērces klients var izvēlēties šim ēdienam. 0 nozīmē bez mērču izvēles.
+                    </p>
+                    <label>
+                        <input type="checkbox" name="has_sizes" value="1" id="hasSizesCheck" onchange="toggleSizeOptions()">
+                        Ir izmēru opcijas (Parastais/Lielais)
+                    </label>
+                    <div id="sizeOptionsContainer" style="display: none; margin-top: 10px; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                        <label style="display: block; margin-bottom: 8px;">
+                            Parastais cena (€):
+                            <input type="number" name="size_small_price" id="sizeSmallPrice" step="0.01" min="0" style="width: 100px; margin-left: 8px;">
+                        </label>
+                        <label style="display: block;">
+                            Lielais cena (€):
+                            <input type="number" name="size_large_price" id="sizeLargePrice" step="0.01" min="0" style="width: 100px; margin-left: 8px;">
+                        </label>
+                        <p style="font-size: 0.85em; color: #6b7280; margin-top: 8px;">
+                            Ja nav izmēru opciju, izmanto tikai pamatcenu augstāk.
+                        </p>
+                    </div>
                     <label>attēls:</label>
                     <input type="file" id="modalImageInput" name="image" accept="image/*" style="display:none;" onchange="showFileName(this)">
                     <label for="modalImageInput" class="custom-file-label">
@@ -517,6 +566,37 @@ if ($conn) {
                             <?php if (!empty($item['image_path'])): ?>
                                 <img src="<?php echo htmlspecialchars($item['image_path']); ?>" class="menu-thumb" alt="Image">
                             <?php endif; ?>
+                        </div>
+                        <div style="min-width:180px;">
+                            <label style="font-weight:600; display:block; margin-bottom:6px;">Mērču skaits</label>
+                            <input type="number" name="included_sauces" value="<?php echo isset($item['included_sauces']) ? intval($item['included_sauces']) : 0; ?>" min="0" max="5" step="1" style="width:80px; padding:6px;">
+                            <div style="font-size:0.8em; color:#6b7280; margin-top:4px;">Cik mērces iekļautas cenā.</div>
+                        </div>
+                        <div style="min-width:220px;">
+                            <label style="font-weight:600; display:block; margin-bottom:6px;">
+                                <input type="checkbox" name="has_sizes" value="1" id="hasSizesCheck<?php echo isset($item['id']) ? $item['id'] : ''; ?>" 
+                                    <?php 
+                                    $has_sizes = false;
+                                    $size_data = null;
+                                    if (isset($item['size_options']) && !empty($item['size_options'])) {
+                                        $size_data = json_decode($item['size_options'], true);
+                                        $has_sizes = ($size_data && (isset($size_data['small']) || isset($size_data['large'])));
+                                    }
+                                    echo $has_sizes ? 'checked' : ''; 
+                                    ?> 
+                                    onchange="toggleSizeOptionsEdit(<?php echo isset($item['id']) ? $item['id'] : ''; ?>)">
+                                Izmēru opcijas
+                            </label>
+                            <div id="sizeOptionsContainer<?php echo isset($item['id']) ? $item['id'] : ''; ?>" style="display: <?php echo $has_sizes ? 'block' : 'none'; ?>; margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 0.9em;">
+                                    Parastais (€):
+                                    <input type="number" name="size_small_price" value="<?php echo $size_data && isset($size_data['small']['price']) ? number_format($size_data['small']['price'], 2, '.', '') : ''; ?>" step="0.01" min="0" style="width: 80px; margin-left: 4px; padding: 4px;">
+                                </label>
+                                <label style="display: block; font-size: 0.9em;">
+                                    Lielais (€):
+                                    <input type="number" name="size_large_price" value="<?php echo $size_data && isset($size_data['large']['price']) ? number_format($size_data['large']['price'], 2, '.', '') : ''; ?>" step="0.01" min="0" style="width: 80px; margin-left: 4px; padding: 4px;">
+                                </label>
+                            </div>
                         </div>
                         <div class="actions">
                             <button type="submit" name="edit_item">saglabāt</button>
@@ -664,6 +744,18 @@ function showFileName(input) {
 function showTableFileName(input, id) {
     var fileName = input.files && input.files.length > 0 ? input.files[0].name : '';
     document.getElementById('tableFileName' + id).textContent = fileName;
+}
+function toggleSizeOptions() {
+    var checkbox = document.getElementById('hasSizesCheck');
+    var container = document.getElementById('sizeOptionsContainer');
+    container.style.display = checkbox.checked ? 'block' : 'none';
+}
+function toggleSizeOptionsEdit(itemId) {
+    var checkbox = document.getElementById('hasSizesCheck' + itemId);
+    var container = document.getElementById('sizeOptionsContainer' + itemId);
+    if (container) {
+        container.style.display = checkbox.checked ? 'block' : 'none';
+    }
 }
 </script>
 </body>

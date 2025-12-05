@@ -32,6 +32,16 @@ function get_sauce_count($item_name, $category_name, $config) {
     return get_sauce_count_from_config($item_name, $category_name, $config);
 }
 
+function get_item_sauce_count($item, $config) {
+    if (isset($item['included_sauces'])) {
+        $count = intval($item['included_sauces']);
+        if ($count > 0) {
+            return $count;
+        }
+    }
+    return get_sauce_count_from_config($item['name'], $item['category_name'], $config);
+}
+
 // Your existing code continues here...
 $table_id = isset($_GET['table']) ? intval($_GET['table']) : 0;
 if ($table_id < 1 || $table_id > get_table_count()) {
@@ -41,8 +51,10 @@ $menu = get_menu_items();
 
 // Get sauces for main food items
 $sauces = [];
+$sauce_category_variants = ['mērcītes', 'mercites', 'mērces', 'merces', 'sauces'];
 foreach ($menu as $item) {
-    if (strtolower(trim($item['category_name'] ?? '')) === 'mērcītes') {
+    $cat_lower = strtolower(trim($item['category_name'] ?? ''));
+    if (in_array($cat_lower, $sauce_category_variants)) {
         $sauces[] = $item;
     }
 }
@@ -81,6 +93,8 @@ foreach ($categories as $cat_name => $items) {
 
 // Combine in the desired order: Food -> Drinks -> Alcoholic Drinks
 $categories = array_merge($ordered_categories, $drink_categories, $alcoholic_categories);
+
+$drink_category_names = array_map('strtolower', get_drink_categories());
 
 // Function to check if item is alcoholic
 function is_alcoholic_item($category_name) {
@@ -170,17 +184,26 @@ function is_main_food_item($item_name, $category_name, $config) {
         
         .sauce-instances {
             margin-top: 12px;
-            padding: 12px;
-            background: #4b5563;
-            border-radius: 6px;
-            border-left: 3px solid #e67e22;
+            padding: 16px;
+            background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
+            border-radius: 8px;
+            border-left: 4px solid #e67e22;
+            box-shadow: 0 2px 8px rgba(230, 126, 34, 0.1);
         }
         
         .sauce-instance {
             display: flex;
             align-items: center;
-            margin-bottom: 8px;
-            gap: 8px;
+            margin-bottom: 10px;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        
+        .sauce-instance:hover {
+            background: rgba(255, 255, 255, 0.9);
         }
         
         .sauce-instance:last-child {
@@ -188,50 +211,255 @@ function is_main_food_item($item_name, $category_name, $config) {
         }
         
         .sauce-instance-label {
-            font-weight: 600;
-            font-size: 0.9em;
-            color: #fff;
-            min-width: 60px;
+            font-weight: 700;
+            font-size: 0.95em;
+            color: #d35400;
+            min-width: 80px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .sauce-instance-label::before {
+            content: "🍯";
+            font-size: 1.1em;
         }
         
         .sauce-select {
             flex: 1;
-            padding: 4px 8px;
-            border: 1px solid #e67e22;
-            border-radius: 4px;
-            font-size: 0.9em;
-            background: #4b5563;
+            padding: 8px 12px;
+            border: 2px solid #e67e22;
+            border-radius: 6px;
+            font-size: 0.95em;
+            background: #fff;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .sauce-select:hover {
+            border-color: #d35400;
+            background: #fffbf0;
         }
         
         .sauce-select:focus {
-            border-color: #e67e22;
+            border-color: #d35400;
             outline: none;
+            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.2);
         }
         
         .sauce-instances-title {
-            font-size: 0.9em;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #e67e22;
+            font-size: 1em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #d35400;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .sauce-instances-title::before {
+            content: "🍯";
+            font-size: 1.2em;
         }
         
         /* New styles for multiple sauce instances */
         .sauce-item-group {
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #666;
+            margin-bottom: 14px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            border: 1px solid rgba(230, 126, 34, 0.2);
         }
         
         .sauce-item-group:last-child {
-            border-bottom: none;
             margin-bottom: 0;
         }
         
         .sauce-item-title {
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #d35400;
+            font-size: 0.95em;
+            padding-bottom: 6px;
+            border-bottom: 2px solid rgba(230, 126, 34, 0.3);
+        }
+        
+        /* Size options styles */
+        .size-options {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .size-option {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 16px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
+            position: relative;
+        }
+        
+        .size-option:hover {
+            background: #ebf5fb;
+            border-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
+        }
+        
+        .size-option.selected {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border-color: #21618c;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+        }
+        
+        .size-option.selected::after {
+            content: "✓";
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            font-size: 1.2em;
             font-weight: bold;
+        }
+        
+        .size-name {
+            display: block;
+            font-weight: 700;
+            font-size: 1em;
             margin-bottom: 6px;
-            color: #e67e22;
+        }
+        
+        .size-price {
+            display: block;
             font-size: 0.9em;
+            opacity: 0.85;
+            font-weight: 600;
+        }
+        
+        .size-option.selected .size-price {
+            opacity: 1;
+        }
+        
+        .size-options-preview {
+            display: flex;
+            gap: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+            font-size: 0.95em;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px dashed #3498db;
+        }
+        
+        .size-preview {
+            color: #2980b9;
+            font-weight: 700;
+            padding: 6px 12px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 4px;
+        }
+        
+        .size-instances {
+            margin-top: 12px;
+            padding: 16px;
+            background: linear-gradient(135deg, #e8f4f8 0%, #d6eaf8 100%);
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.1);
+        }
+        
+        .size-instances-title {
+            font-size: 1em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #2980b9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .size-instances-title::before {
+            content: "📏";
+            font-size: 1.2em;
+        }
+        
+        .size-item-group {
+            margin-bottom: 14px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+        
+        .size-item-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .size-item-title {
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #2980b9;
+            font-size: 0.95em;
+            padding-bottom: 6px;
+            border-bottom: 2px solid rgba(52, 152, 219, 0.3);
+        }
+        
+        .size-instance {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 0;
+            flex-wrap: wrap;
+        }
+        
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .station-filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .station-filter-btn {
+            border: 1px solid #d1d5db;
+            background: #f3f4f6;
+            color: #1f2937;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .station-filter-btn:hover {
+            background: #e5e7eb;
+        }
+        
+        .station-filter-btn.active {
+            background: #2563eb;
+            color: #fff;
+            border-color: #2563eb;
+            box-shadow: 0 8px 15px rgba(37, 99, 235, 0.2);
+        }
+        
+        .category-filter label {
+            font-weight: 600;
+            margin-right: 8px;
         }
     </style>
 </head>
@@ -243,37 +471,38 @@ function is_main_food_item($item_name, $category_name, $config) {
     
     <div class="menu-content">
         <!-- Category Filter Dropdown -->
-        <div style="margin-bottom: 24px; text-align: right;">
-            <label for="categoryFilter" style="font-weight: 600; margin-right: 8px;">
-                <i class="bi bi-filter" style="font-size:1.2em; vertical-align:middle; margin-right:4px;"></i>
-                izvēlēties kategoriju:
-            </label>
-            <select id="categoryFilter" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc;">
-                <option value="all">Viss</option>
-                <?php foreach (array_keys($categories) as $category_name): ?>
-                    <option value="<?php echo htmlspecialchars($category_name); ?>"><?php echo htmlspecialchars($category_name); ?></option>
-                <?php endforeach; ?>
-                <?php if (!empty($uncategorized)): ?>
-                    <option value="Other Items">Citi ēdieni</option>
-                <?php endif; ?>
-            </select>
+        <div class="filters">
+            <div class="station-filters">
+                <button type="button" class="station-filter-btn active" data-station-filter="all">Viss</button>
+                <button type="button" class="station-filter-btn" data-station-filter="kitchen">Virtuve</button>
+                <button type="button" class="station-filter-btn" data-station-filter="bar">Bārs</button>
+            </div>
         </div>
         <form method="post" action="submit_order.php" id="orderForm">
             <input type="hidden" name="table_id" value="<?php echo $table_id; ?>">
             
             <!-- Display categorized items -->
-            <?php foreach ($categories as $category_name => $category_items): ?>
-            <div class="category-section" data-category="<?php echo htmlspecialchars($category_name); ?>">
+            <?php foreach ($categories as $category_name => $category_items): 
+                $category_station = in_array(strtolower(trim($category_name)), $drink_category_names) ? 'bar' : 'kitchen';
+            ?>
+            <div class="category-section" data-category="<?php echo htmlspecialchars($category_name); ?>" data-station="<?php echo $category_station; ?>">
                 <h2 class="category-title <?php echo is_alcoholic_item($category_name) ? 'alcoholic-category' : ''; ?>">
                     <?php echo htmlspecialchars($category_name); ?>
                 </h2>
                 <div class="menu-grid">
                     <?php foreach ($category_items as $item): 
                         $is_alcoholic = is_alcoholic_item($item['category_name']);
-                        $sauce_count = get_sauce_count($item['name'], $item['category_name'], $sauce_config);
+                        $sauce_count = get_item_sauce_count($item, $sauce_config);
                         $is_main_food = $sauce_count > 0;
+                        // Parse size options
+                        $size_options = null;
+                        $has_sizes = false;
+                        if (isset($item['size_options']) && !empty($item['size_options'])) {
+                            $size_options = json_decode($item['size_options'], true);
+                            $has_sizes = ($size_options && (isset($size_options['small']) || isset($size_options['large'])));
+                        }
                     ?>
-                    <div class="menu-item <?php echo $is_alcoholic ? 'alcoholic' : ''; ?>">
+                    <div class="menu-item <?php echo $is_alcoholic ? 'alcoholic' : ''; ?>" data-item-id="<?php echo $item['id']; ?>" data-has-sizes="<?php echo $has_sizes ? '1' : '0'; ?>">
                         <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
                             <?php if (!empty($item['image_path'])): ?>
                                 <img src="<?php echo htmlspecialchars($item['image_path']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
@@ -284,7 +513,18 @@ function is_main_food_item($item_name, $category_name, $config) {
                             <div class="food-description">
                                 <?php echo htmlspecialchars($item['description']); ?>
                             </div>
-                            <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
+                            <?php if ($has_sizes): ?>
+                                <div class="size-options-preview" id="sizeOptionsPreview_<?php echo $item['id']; ?>" data-small-price="<?php echo isset($size_options['small']) ? $size_options['small']['price'] : ''; ?>" data-large-price="<?php echo isset($size_options['large']) ? $size_options['large']['price'] : ''; ?>">
+                                    <?php if (isset($size_options['small'])): ?>
+                                        <span class="size-preview"><?php echo htmlspecialchars($size_options['small']['name']); ?>: €<?php echo number_format($size_options['small']['price'], 2); ?></span>
+                                    <?php endif; ?>
+                                    <?php if (isset($size_options['large'])): ?>
+                                        <span class="size-preview"><?php echo htmlspecialchars($size_options['large']['name']); ?>: €<?php echo number_format($size_options['large']['price'], 2); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
+                            <?php endif; ?>
                             
                             <?php if ($is_alcoholic): ?>
                                 <!-- Alcoholic items - show notice instead of controls -->
@@ -314,6 +554,14 @@ function is_main_food_item($item_name, $category_name, $config) {
                                     </button>
                                 </div>
                                 
+                                <!-- Size selection for items with sizes -->
+                                <?php if ($has_sizes): ?>
+                                <div class="size-instances" id="sizeInstances_<?php echo $item['id']; ?>" style="display: none;">
+                                    <div class="size-instances-title">Izmēru izvēle:</div>
+                                    <div id="sizeInstancesContainer_<?php echo $item['id']; ?>"></div>
+                                </div>
+                                <?php endif; ?>
+                                
                                 <!-- Sauce selection for main food items -->
                                 <?php if ($is_main_food): ?>
                                 <div class="sauce-instances" id="sauceInstances_<?php echo $item['id']; ?>" style="display: none;">
@@ -327,6 +575,9 @@ function is_main_food_item($item_name, $category_name, $config) {
                                 <?php if ($is_main_food): ?>
                                 <input type="hidden" name="sauces[<?php echo $item['id']; ?>]" id="sauces_<?php echo $item['id']; ?>" value="">
                                 <?php endif; ?>
+                                <?php if ($has_sizes): ?>
+                                <input type="hidden" name="sizes[<?php echo $item['id']; ?>]" id="sizes_<?php echo $item['id']; ?>" value="">
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -337,14 +588,21 @@ function is_main_food_item($item_name, $category_name, $config) {
             
             <!-- Display uncategorized items (unchanged) -->
             <?php if (!empty($uncategorized)): ?>
-            <div class="category-section" data-category="Other Items">
+            <div class="category-section" data-category="Other Items" data-station="kitchen">
                 <h2 class="category-title">Citi ēdieni</h2>
                 <div class="menu-grid">
                     <?php foreach ($uncategorized as $item): 
-                        $sauce_count = get_sauce_count($item['name'], '', $sauce_config);
+                        $sauce_count = get_item_sauce_count($item, $sauce_config);
                         $is_main_food = $sauce_count > 0;
+                        // Parse size options
+                        $size_options = null;
+                        $has_sizes = false;
+                        if (isset($item['size_options']) && !empty($item['size_options'])) {
+                            $size_options = json_decode($item['size_options'], true);
+                            $has_sizes = ($size_options && (isset($size_options['small']) || isset($size_options['large'])));
+                        }
                     ?>
-                    <div class="menu-item">
+                    <div class="menu-item" data-item-id="<?php echo $item['id']; ?>" data-has-sizes="<?php echo $has_sizes ? '1' : '0'; ?>">
                         <div class="food-image<?php if (!empty($item['image_path'])) echo ' has-image'; ?>">
                             <?php if (!empty($item['image_path'])): ?>
                                 <img src="<?php echo htmlspecialchars($item['image_path']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
@@ -355,7 +613,24 @@ function is_main_food_item($item_name, $category_name, $config) {
                             <div class="food-description">
                                 <?php echo htmlspecialchars($item['description']); ?>
                             </div>
-                            <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
+                            <?php if ($has_sizes): ?>
+                                <div class="size-options" id="sizeOptions_<?php echo $item['id']; ?>">
+                                    <?php if (isset($size_options['small'])): ?>
+                                        <div class="size-option" data-size="small" data-price="<?php echo $size_options['small']['price']; ?>">
+                                            <span class="size-name"><?php echo htmlspecialchars($size_options['small']['name']); ?></span>
+                                            <span class="size-price">€<?php echo number_format($size_options['small']['price'], 2); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (isset($size_options['large'])): ?>
+                                        <div class="size-option" data-size="large" data-price="<?php echo $size_options['large']['price']; ?>">
+                                            <span class="size-name"><?php echo htmlspecialchars($size_options['large']['name']); ?></span>
+                                            <span class="size-price">€<?php echo number_format($size_options['large']['price'], 2); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="food-price">€<?php echo number_format($item['price'], 2); ?></div>
+                            <?php endif; ?>
                             
                             <div class="item-controls">
                                 <div class="quantity-controls">
@@ -389,6 +664,9 @@ function is_main_food_item($item_name, $category_name, $config) {
                             <input type="hidden" name="customizations[<?php echo $item['id']; ?>]" id="custom_<?php echo $item['id']; ?>" value="">
                             <?php if ($is_main_food): ?>
                             <input type="hidden" name="sauces[<?php echo $item['id']; ?>]" id="sauces_<?php echo $item['id']; ?>" value="">
+                            <?php endif; ?>
+                            <?php if ($has_sizes): ?>
+                            <input type="hidden" name="sizes[<?php echo $item['id']; ?>]" id="sizes_<?php echo $item['id']; ?>" value="">
                             <?php endif; ?>
                         </div>
                     </div>
@@ -437,16 +715,164 @@ function is_main_food_item($item_name, $category_name, $config) {
 let currentItemId = null;
 let customizations = {};
 let sauceSelections = {};
+let sizeSelections = {}; // Store selected sizes for each item
 
 // Available sauces from PHP
 const availableSauces = <?php echo json_encode($sauces); ?>;
+console.log('Available sauces:', availableSauces);
+if (availableSauces.length === 0) {
+    console.warn('No sauces found! Make sure you have items in the "mērcītes" category.');
+}
+
+function updateSizeInstances(itemId, newQuantity, oldQuantity) {
+    const menuItem = document.querySelector(`[data-item-id="${itemId}"]`);
+    const sizeInstancesDiv = document.getElementById('sizeInstances_' + itemId);
+    const container = document.getElementById('sizeInstancesContainer_' + itemId);
+    
+    if (!sizeInstancesDiv || !container) return;
+    
+    if (newQuantity > 0) {
+        sizeInstancesDiv.style.display = 'block';
+        
+        if (!sizeSelections[itemId]) {
+            sizeSelections[itemId] = [];
+        }
+        
+        // Adjust array length
+        if (newQuantity > sizeSelections[itemId].length) {
+            for (let i = sizeSelections[itemId].length; i < newQuantity; i++) {
+                sizeSelections[itemId][i] = '';
+            }
+        } else if (newQuantity < sizeSelections[itemId].length) {
+            sizeSelections[itemId] = sizeSelections[itemId].slice(0, newQuantity);
+        }
+        
+        rebuildSizeSelectionUI(itemId, newQuantity, menuItem);
+    } else {
+        sizeInstancesDiv.style.display = 'none';
+        sizeSelections[itemId] = [];
+    }
+    
+    updateSizeHiddenField(itemId);
+}
+
+function rebuildSizeSelectionUI(itemId, quantity, menuItem) {
+    const container = document.getElementById('sizeInstancesContainer_' + itemId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // Get size options from the preview data attributes
+    const preview = menuItem.querySelector('.size-options-preview');
+    if (!preview) return;
+    
+    const sizeOptions = [];
+    const smallPrice = preview.getAttribute('data-small-price');
+    const largePrice = preview.getAttribute('data-large-price');
+    
+    if (smallPrice && smallPrice !== '') {
+        sizeOptions.push({
+            size: 'small',
+            name: 'Parastais',
+            price: parseFloat(smallPrice)
+        });
+    }
+    
+    if (largePrice && largePrice !== '') {
+        sizeOptions.push({
+            size: 'large',
+            name: 'Lielais',
+            price: parseFloat(largePrice)
+        });
+    }
+    
+    for (let i = 0; i < quantity; i++) {
+        // Create a group for each item quantity
+        const itemGroup = document.createElement('div');
+        itemGroup.className = 'size-item-group';
+        
+        if (quantity > 1) {
+            const groupTitle = document.createElement('div');
+            groupTitle.className = 'size-item-title';
+            groupTitle.textContent = `${i + 1}. ēdiens:`;
+            itemGroup.appendChild(groupTitle);
+        }
+        
+        // Create size selectors for this item
+        const instanceDiv = document.createElement('div');
+        instanceDiv.className = 'size-instance';
+        
+        sizeOptions.forEach(sizeOpt => {
+            const sizeButton = document.createElement('div');
+            sizeButton.className = 'size-option';
+            sizeButton.setAttribute('data-size', sizeOpt.size);
+            sizeButton.setAttribute('data-price', sizeOpt.price);
+            sizeButton.setAttribute('data-instance', i);
+            
+            const sizeName = document.createElement('span');
+            sizeName.className = 'size-name';
+            sizeName.textContent = sizeOpt.name;
+            
+            const sizePrice = document.createElement('span');
+            sizePrice.className = 'size-price';
+            sizePrice.textContent = `€${sizeOpt.price.toFixed(2)}`;
+            
+            sizeButton.appendChild(sizeName);
+            sizeButton.appendChild(sizePrice);
+            
+            // Check if this size is selected for this instance
+            if (sizeSelections[itemId] && sizeSelections[itemId][i] === sizeOpt.size) {
+                sizeButton.classList.add('selected');
+            }
+            
+            sizeButton.addEventListener('click', function() {
+                // Remove selected from all sizes in this instance
+                instanceDiv.querySelectorAll('.size-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                
+                // Add selected to clicked option
+                this.classList.add('selected');
+                
+                // Store selection
+                if (!sizeSelections[itemId]) {
+                    sizeSelections[itemId] = [];
+                }
+                sizeSelections[itemId][i] = this.getAttribute('data-size');
+                
+                updateSizeHiddenField(itemId);
+                updateOrderSummary();
+            });
+            
+            instanceDiv.appendChild(sizeButton);
+        });
+        
+        itemGroup.appendChild(instanceDiv);
+        container.appendChild(itemGroup);
+    }
+}
+
+function updateSizeHiddenField(itemId) {
+    const hiddenField = document.getElementById('sizes_' + itemId);
+    if (hiddenField) {
+        hiddenField.value = JSON.stringify(sizeSelections[itemId] || []);
+    }
+}
 
 // Updated JavaScript for flexible sauce handling
 function changeQuantity(itemId, change) {
     const input = document.getElementById('qty_' + itemId);
+    const menuItem = input.closest('.menu-item');
+    const hasSizes = menuItem.getAttribute('data-has-sizes') === '1';
+    
     const newValue = Math.max(0, Math.min(10, parseInt(input.value) + change));
     const oldValue = parseInt(input.value);
     input.value = newValue;
+    
+    // Handle size instances for items with sizes
+    if (hasSizes) {
+        updateSizeInstances(itemId, newValue, oldValue);
+    }
     
     // Handle sauce instances for main food items
     if (input.dataset.isMainFood === '1') {
@@ -574,59 +1000,125 @@ function updateOrderSummary() {
     quantities.forEach(input => {
         const quantity = parseInt(input.value);
         if (quantity > 0) {
-            hasItems = true;
             const itemId = input.name.match(/\[(\d+)\]/)[1];
             const menuItem = input.closest('.menu-item');
             const itemName = menuItem.querySelector('.food-name').textContent;
-            const itemPrice = parseFloat(menuItem.querySelector('.food-price').textContent.replace('€', ''));
-            const itemTotal = quantity * itemPrice;
-            total += itemTotal;
+            const hasSizes = menuItem.getAttribute('data-has-sizes') === '1';
             
-            // Add customization info if exists
-            let customizationInfo = '';
-            if (customizations[itemId] && Object.keys(customizations[itemId]).length > 0) {
-                customizationInfo += '<br><small style="color: #e67e22;">✓ Pielāgots</small>';
+            // Get prices - handle multiple sizes per quantity
+            let itemTotal = 0;
+            let sizeInfo = '';
+            const preview = menuItem.querySelector('.size-options-preview');
+            
+            if (hasSizes && sizeSelections[itemId] && sizeSelections[itemId].length > 0) {
+                // Calculate total for each quantity with its selected size
+                const sizeDetails = [];
+                for (let i = 0; i < quantity; i++) {
+                    const selectedSize = sizeSelections[itemId][i];
+                    if (selectedSize) {
+                        let sizePrice = 0;
+                        let sizeName = '';
+                        
+                        if (selectedSize === 'small' && preview) {
+                            sizePrice = parseFloat(preview.getAttribute('data-small-price') || 0);
+                            sizeName = 'Parastais';
+                        } else if (selectedSize === 'large' && preview) {
+                            sizePrice = parseFloat(preview.getAttribute('data-large-price') || 0);
+                            sizeName = 'Lielais';
+                        }
+                        
+                        if (sizePrice > 0) {
+                            itemTotal += sizePrice;
+                            if (quantity > 1) {
+                                sizeDetails.push(`${i + 1}: ${sizeName}`);
+                            } else {
+                                sizeDetails.push(sizeName);
+                            }
+                        }
+                    }
+                }
+                
+                if (sizeDetails.length > 0) {
+                    sizeInfo = ` (${sizeDetails.join(', ')})`;
+                }
+            } else if (!hasSizes) {
+                const priceElement = menuItem.querySelector('.food-price');
+                if (priceElement) {
+                    const itemPrice = parseFloat(priceElement.textContent.replace('€', ''));
+                    itemTotal = quantity * itemPrice;
+                }
             }
             
-            // Add sauce info for main food items
-            if (input.dataset.isMainFood === '1' && sauceSelections[itemId]) {
-                const sauceCount = parseInt(input.dataset.sauceCount) || 1;
-                const sauceInfo = [];
+            // Only add to summary if we have valid prices
+            if (itemTotal > 0) {
+                hasItems = true;
+                total += itemTotal;
                 
-                for (let i = 0; i < quantity; i++) {
-                    const itemSauces = [];
-                    for (let j = 0; j < sauceCount; j++) {
-                        const sauceIndex = i * sauceCount + j;
-                        const sauceId = sauceSelections[itemId][sauceIndex];
-                        
-                        if (sauceId) {
-                            const sauce = availableSauces.find(s => s.id == sauceId);
-                            if (sauce) {
-                                itemSauces.push(sauce.name);
+                // Add customization info if exists
+                let customizationInfo = '';
+                if (customizations[itemId] && Object.keys(customizations[itemId]).length > 0) {
+                    customizationInfo += '<br><small style="color: #e67e22;">✓ Pielāgots</small>';
+                }
+                
+                // Add size info
+                if (sizeInfo) {
+                    customizationInfo += '<br><small style="color: #3498db;">📏' + sizeInfo + '</small>';
+                }
+                
+                // Add sauce info for main food items
+                if (input.dataset.isMainFood === '1' && sauceSelections[itemId]) {
+                    const sauceCount = parseInt(input.dataset.sauceCount) || 1;
+                    const sauceInfo = [];
+                    
+                    for (let i = 0; i < quantity; i++) {
+                        const itemSauces = [];
+                        for (let j = 0; j < sauceCount; j++) {
+                            const sauceIndex = i * sauceCount + j;
+                            const sauceId = sauceSelections[itemId][sauceIndex];
+                            
+                            if (sauceId) {
+                                const sauce = availableSauces.find(s => s.id == sauceId);
+                                if (sauce) {
+                                    itemSauces.push(sauce.name);
+                                }
+                            } else {
+                                itemSauces.push('Bez mērces');
                             }
+                        }
+                        
+                        if (quantity > 1) {
+                            sauceInfo.push(`${i + 1}: ${itemSauces.join(', ')}`);
                         } else {
-                            itemSauces.push('Bez mērces');
+                            sauceInfo.push(itemSauces.join(', '));
                         }
                     }
                     
-                    if (quantity > 1) {
-                        sauceInfo.push(`${i + 1}: ${itemSauces.join(', ')}`);
-                    } else {
-                        sauceInfo.push(itemSauces.join(', '));
+                    if (sauceInfo.length > 0) {
+                        customizationInfo += '<br><small style="color: #27ae60;">🍯 ' + sauceInfo.join(' | ') + '</small>';
                     }
                 }
                 
-                if (sauceInfo.length > 0) {
-                    customizationInfo += '<br><small style="color: #27ae60;">🍯 ' + sauceInfo.join(' | ') + '</small>';
+                // Check if all sizes are selected for items with sizes
+                let allSizesSelected = true;
+                if (hasSizes) {
+                    for (let i = 0; i < quantity; i++) {
+                        if (!sizeSelections[itemId] || !sizeSelections[itemId][i]) {
+                            allSizesSelected = false;
+                            break;
+                        }
+                    }
+                }
+                
+                // Only add to summary if all sizes are selected (or no sizes)
+                if (allSizesSelected) {
+                    summaryHTML += `
+                        <div class="summary-item">
+                            <span>${itemName}${sizeInfo} x ${quantity}${customizationInfo}</span>
+                            <span>€${itemTotal.toFixed(2)}</span>
+                        </div>
+                    `;
                 }
             }
-            
-            summaryHTML += `
-                <div class="summary-item">
-                    <span>${itemName} x ${quantity}${customizationInfo}</span>
-                    <span>€${itemTotal.toFixed(2)}</span>
-                </div>
-            `;
         }
     });
     
@@ -751,22 +1243,29 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Initialize order summary on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateOrderSummary();
+const stationFilterButtons = document.querySelectorAll('.station-filter-btn');
+let activeStationFilter = 'all';
+
+function applyFilters() {
+    document.querySelectorAll('.category-section').forEach(section => {
+        const station = section.getAttribute('data-station') || 'kitchen';
+        const stationMatches = activeStationFilter === 'all' || station === activeStationFilter;
+        section.style.display = stationMatches ? '' : 'none';
+    });
+}
+
+stationFilterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+        activeStationFilter = this.dataset.stationFilter;
+        stationFilterButtons.forEach(btn => btn.classList.toggle('active', btn === this));
+        applyFilters();
+    });
 });
 
-// Category filter logic
-const categoryFilter = document.getElementById('categoryFilter');
-categoryFilter.addEventListener('change', function() {
-    const selected = this.value;
-    document.querySelectorAll('.category-section').forEach(section => {
-        if (selected === 'all' || section.getAttribute('data-category') === selected) {
-            section.style.display = '';
-        } else {
-            section.style.display = 'none';
-        }
-    });
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateOrderSummary();
+    applyFilters();
 });
 </script>
 </body>

@@ -70,9 +70,14 @@ foreach ($filtered_kitchen_orders as $order) {
                 <h1>🍳 Pasūtījumi 🍳</h1>
                 <div class="subtitle">Virtuves pasūtījumi (bez dzērieniem)</div>
             </div>
-            <button class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
-                <span id="fullscreenIcon">⛶</span>
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()" title="Toggle Fullscreen" style="margin-right: 0;">
+                    <span id="fullscreenIcon">⛶</span>
+                </button>
+                <button onclick="playNewOrderSound(); unlockAudio();" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 600;" title="Test sound notification">
+                    🔊 Test Sound
+                </button>
+            </div>
         </div>
     </div>
     
@@ -96,7 +101,7 @@ foreach ($filtered_kitchen_orders as $order) {
                 // FIXED: Check for is_new_kitchen field
                 $isNewOrder = isset($order['is_new_kitchen']) && $order['is_new_kitchen'] == 1;
                 ?>
-                <div class="order-card <?php echo $isNewOrder ? 'new-order' : ''; ?>">
+                <div class="order-card <?php echo $isNewOrder ? 'new-order' : ''; ?>" data-order-id="<?php echo $order['id']; ?>">
                     <div class="order-header">
                         <div class="order-info">
                             <div class="table-number">Galds <?php echo $order['table_id']; ?></div>
@@ -139,17 +144,23 @@ foreach ($filtered_kitchen_orders as $order) {
                         ?>
                             <div class="item-row">
                                 <div class="item-details">
-                                    <div class="item-name"><?php echo htmlspecialchars($menuItem['name']); ?></div>
+                                    <div class="item-name" style="font-size: 1.15em; font-weight: 700; color: #2c3e50; margin-bottom: 4px;">
+                                        <?php echo htmlspecialchars($menuItem['name']); ?>
+                                    </div>
                                     <?php if (!empty($menuItem['category_name'])): ?>
-                                        <div class="item-category"><?php echo htmlspecialchars($menuItem['category_name']); ?></div>
+                                        <div class="item-category" style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 8px;">
+                                            <?php echo htmlspecialchars($menuItem['category_name']); ?>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
-                                <div class="item-quantity">x<?php echo $item['quantity']; ?></div>
+                                <div class="item-quantity" style="font-size: 1.3em; font-weight: 700; color: #e74c3c; background: #fff; padding: 8px 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    x<?php echo $item['quantity']; ?>
+                                </div>
                             </div>
                             
-                            <!-- FIX: Actually display the customizations -->
+                            <!-- Display customizations with better styling -->
                             <?php if (!empty($customizationDisplay)): ?>
-                                <div class="customizations">
+                                <div class="customizations" style="margin-top: 12px; padding: 14px; background: #fff; border-radius: 8px; border-left: 4px solid #f39c12; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
                                     <?php echo $customizationDisplay; ?>
                                 </div>
                             <?php endif; ?>
@@ -199,14 +210,228 @@ foreach ($filtered_kitchen_orders as $order) {
 let refreshTimer;
 let popupShown = <?php echo $has_new_orders ? 'true' : 'false'; ?>;
 
+// Global audio context (reused to avoid creating new ones)
+let audioContext = null;
+let audioUnlocked = false;
+
+// Unlock audio context on first user interaction (required by browser autoplay policies)
+function unlockAudio() {
+    if (audioUnlocked) return;
+    
+    try {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Resume audio context if suspended (browser autoplay policy)
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                audioUnlocked = true;
+                console.log('Audio unlocked and ready');
+            }).catch(err => {
+                console.log('Could not unlock audio:', err);
+            });
+        } else {
+            audioUnlocked = true;
+        }
+    } catch (error) {
+        console.log('Could not create audio context:', error);
+    }
+}
+
+// Unlock audio on any user interaction
+document.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('keydown', unlockAudio, { once: true });
+document.addEventListener('touchstart', unlockAudio, { once: true });
+
+// Sound notification for new orders
+function playNewOrderSound() {
+    // Try Web Audio API first
+    try {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Resume if suspended
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                playSoundTones();
+            }).catch(() => {
+                // Fallback to HTML5 audio
+                playFallbackSound();
+            });
+        } else {
+            playSoundTones();
+        }
+    } catch (error) {
+        console.log('Web Audio API not available, using fallback:', error);
+        playFallbackSound();
+    }
+}
+
+function playSoundTones() {
+    if (!audioContext) return;
+    
+    try {
+        const duration = 0.3;
+        const frequency1 = 800;
+        const frequency2 = 1000;
+        
+        // Play first tone
+        const oscillator1 = audioContext.createOscillator();
+        const gainNode1 = audioContext.createGain();
+        
+        oscillator1.connect(gainNode1);
+        gainNode1.connect(audioContext.destination);
+        
+        oscillator1.frequency.value = frequency1;
+        oscillator1.type = 'sine';
+        
+        gainNode1.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+        
+        oscillator1.start(audioContext.currentTime);
+        oscillator1.stop(audioContext.currentTime + duration);
+        
+        // Play second tone after a short delay
+        setTimeout(() => {
+            try {
+                const oscillator2 = audioContext.createOscillator();
+                const gainNode2 = audioContext.createGain();
+                
+                oscillator2.connect(gainNode2);
+                gainNode2.connect(audioContext.destination);
+                
+                oscillator2.frequency.value = frequency2;
+                oscillator2.type = 'sine';
+                
+                gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                
+                oscillator2.start(audioContext.currentTime);
+                oscillator2.stop(audioContext.currentTime + duration);
+            } catch (e) {
+                console.log('Error playing second tone:', e);
+            }
+        }, duration * 1000 + 50);
+    } catch (error) {
+        console.log('Error playing sound tones:', error);
+        playFallbackSound();
+    }
+}
+
+function playFallbackSound() {
+    // Fallback: Use HTML5 Audio with data URI (works in all browsers)
+    try {
+        // Generate a simple beep sound using data URI
+        const audio = new Audio();
+        audio.volume = 0.6;
+        
+        // Create a simple beep using oscillator (if supported) or use a data URI
+        // For maximum compatibility, we'll use a simple approach
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.2);
+        
+        // Second beep
+        setTimeout(() => {
+            const oscillator2 = ctx.createOscillator();
+            const gainNode2 = ctx.createGain();
+            
+            oscillator2.connect(gainNode2);
+            gainNode2.connect(ctx.destination);
+            
+            oscillator2.frequency.value = 1000;
+            oscillator2.type = 'sine';
+            
+            gainNode2.gain.setValueAtTime(0.3, ctx.currentTime);
+            gainNode2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+            
+            oscillator2.start(ctx.currentTime);
+            oscillator2.stop(ctx.currentTime + 0.2);
+        }, 250);
+    } catch (e) {
+        console.log('All audio methods failed. Browser may not support audio or requires user interaction.');
+    }
+}
+
+// Track which orders have already played their sound
+function getAnnouncedOrders() {
+    const stored = localStorage.getItem('kitchen_announced_orders');
+    return stored ? JSON.parse(stored) : [];
+}
+
+function markOrderAsAnnounced(orderId) {
+    const announced = getAnnouncedOrders();
+    if (!announced.includes(orderId)) {
+        announced.push(orderId);
+        // Keep only last 50 orders to prevent localStorage from growing too large
+        if (announced.length > 50) {
+            announced.shift();
+        }
+        localStorage.setItem('kitchen_announced_orders', JSON.stringify(announced));
+    }
+}
+
+function checkForNewOrdersAndPlaySound() {
+    const newOrderIds = [];
+    <?php if ($has_new_orders && $new_order_details): ?>
+        newOrderIds.push(<?php echo $new_order_details['id']; ?>);
+    <?php endif; ?>
+    
+    // Also check all new order cards on the page
+    document.querySelectorAll('.order-card.new-order').forEach(card => {
+        const orderId = card.getAttribute('data-order-id');
+        if (orderId) {
+            const id = parseInt(orderId);
+            if (!newOrderIds.includes(id)) {
+                newOrderIds.push(id);
+            }
+        }
+    });
+    
+    // Play sound for orders that haven't been announced yet
+    const announced = getAnnouncedOrders();
+    let hasNewUnannounced = false;
+    
+    newOrderIds.forEach(orderId => {
+        if (!announced.includes(orderId)) {
+            hasNewUnannounced = true;
+            markOrderAsAnnounced(orderId);
+        }
+    });
+    
+    if (hasNewUnannounced) {
+        playNewOrderSound();
+    }
+}
+
 function startAutoRefresh() {
     refreshTimer = setTimeout(function() {
+        // Check for new orders before refreshing
+        checkForNewOrdersAndPlaySound();
+        
         // Only refresh if no modals are open and user isn't interacting
         if (!document.querySelector('.order-card:hover') && !popupShown) {
             location.reload();
         } else {
             // Try again in 2 seconds if user is interacting
-            refreshTimer = setTimeout(() => location.reload(), 2000);
+            refreshTimer = setTimeout(() => {
+                checkForNewOrdersAndPlaySound();
+                location.reload();
+            }, 2000);
         }
     }, 10000);
 }
@@ -249,6 +474,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const popup = document.getElementById('newOrderPopup');
     if (popup) {
         popup.style.display = 'flex';
+        // Play sound notification for new orders
+        checkForNewOrdersAndPlaySound();
         // Auto-close popup after 30 seconds if not acknowledged
         setTimeout(function() {
             if (popup.style.display !== 'none') {
@@ -257,6 +484,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 startAutoRefresh();
             }
         }, 30000);
+    } else {
+        // Check for new orders even if popup doesn't show
+        checkForNewOrdersAndPlaySound();
     }
 });
 
